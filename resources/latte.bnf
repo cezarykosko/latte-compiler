@@ -1,0 +1,94 @@
+<program> = topdef*
+<topdef> = clssdef | fndef | <ws>
+fndef = vtype <wp> ident <ws ob ws> args <ws cb ws> block
+clssdef = noextclssdef | extclssdef
+noextclssdef = <'class' wp> ident <ws '{' ws> clssdecls <ws '}' ws>
+extclssdef = <'class' wp> ident <wp 'extends' wp> tident <ws '{' ws> clssdecls <ws '}' ws>
+clssdecls = (clssdecl <ws> )*
+clssdecl = decl | fndef
+arg = type <wp> ident
+args = epsilon | arg (<ws ',' ws> arg)*
+
+block = <ws '{' ws> stmts <ws '}' ws>
+<stmts> = (stmt <ws>)*
+<stmt> = empty | bstmt | decl | ass | incr | decr | ret | vret | cond | condelse | while | sexp
+<empty> = <ws ';' ws>
+<bstmt> = block
+decl = type <wp> items <ws ';' ws>
+<items> = item (<ws ',' ws> item)*
+<item> = init | noinit
+noinit = ident
+init = ident <ws '=' ws> expr
+ass = (ident | fident) <ws '=' ws> expr <ws ';' ws>
+incr = ident <ws '++' ws ';' ws>
+decr = ident <ws '--' ws ';' ws>
+ret = <'return' wp> expr <ws ';' ws>
+vret = <'return' ws ';' ws>
+cond = <'if' ws '(' ws> expr <ws ')' ws> stmt
+condelse = <'if' ws '(' ws> expr <ws ')' ws> stmt <ws 'else' ws> stmt
+while = <'while' ws '(' ws> expr <ws ')' ws> stmt
+sexp = expr <ws ';' ws>
+
+<vtype> = type | void
+<type> = (int | string | bool) / tident
+tident = ident
+fident = ident <ws '.' ws> ident
+int = <'int'>
+string = <'string'>
+bool = <'boolean'>
+void = <'void'>
+
+expr = exp0
+<exprs> = (expr (<ws ',' ws> expr)*)?
+<bexpr> = <ws ob ws> expr <ws cb ws>
+<exp0> = eor | exp1 | bexpr
+eor = exp1 <ws '||' ws> expr
+<exp1> = eand | exp2 | bexpr
+eand = exp2 <ws '&&' ws> exp1
+<exp2> = erel | exp3 | bexpr
+erel = exp2 <ws> relop <ws> exp3
+<exp3> = eadd | exp4 | bexpr
+eadd = exp3 <ws> addop <ws> exp4
+<exp4> = emul | exp5 | bexpr
+emul = exp4 <ws> mulop <ws> exp5
+<exp5> = neg | not | exp6 | bexpr
+neg = <ws '-' ws> exp6
+not = <ws '!' ws> exp6
+<exp6> = evar | elitint | elittrue | elitfalse | eapp | estring | bexpr | eclassinit | eclassfield | etypednull
+evar = ident
+elitint = digit+
+elittrue = <'true'>
+elitfalse = <'false'>
+etypednull = <ob ws> tident <cb ws 'null'>
+eapp = ident <ws ob ws> exprs <ws cb ws>
+<eclassfield> = fident | fapp
+fapp = ident <ws '.' ws> eapp
+estring = string
+eclassinit = <'new' wp> ident
+ident = letter (letter | digit | '_' | "'")*
+<digit> = #'[0-9]'
+<letter> = #'[a-zA-Z]'
+<char> =  #'[.]'
+<string> = <'"'> #'([^"\\]|(\\["\\nt]))*' <'"'>
+
+<addop> = plus | minus
+plus = <ws '+' ws>
+minus = <ws '-' ws>
+<mulop> = times | div | mod
+times = <ws '*' ws>
+div = <ws '/' ws>
+mod = <ws '%' ws>
+<relop> = lth | le | gth | ge | eq | ieq
+lth = <ws '<' ws>
+le = <ws '<=' ws>
+gth = <ws '>' ws>
+ge = <ws '>=' ws>
+eq = <ws '==' ws>
+ieq = <ws '!=' ws>
+
+
+w = #'[ \t\n]' | ('#' | '//' ) #'[^\n]*\n' | '/*' #'[^(*/)]*' '*/'
+wp = w+
+ws = w*
+ob = '('
+cb = ')'
