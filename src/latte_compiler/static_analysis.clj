@@ -15,8 +15,8 @@
 
 (deftype AnalysisResult [input glob-state]
   util/CompilationPhase
-  (successful [this] (:violations this))
-  (output [this] (:input this)))
+  (successful [this] (not (:violations (.-glob-state this))))
+  (output [this] (.-input this)))
 
 (defn makeclassdefmap
   [glob-state startmap name classdefs]
@@ -24,6 +24,7 @@
 
 (defn makeclassdef
   [glob-state clssexpr extends]
+  (println clssexpr)
   (match/match [extends (nth clssexpr 2)]
                [true [:tident [:ident ident]]]
                (let [parent-map (get (:classes glob-state) ident)]
@@ -31,7 +32,7 @@
                    (do
                      (util/println-err (str "ERROR: no such type: " ident " in"))
                      (util/println-ip-meta clssexpr)
-                     (assoc-in glob-state :violations true)
+                     (assoc glob-state :violations true)
                      )
                    (makeclassdefmap glob-state parent-map (second clssexpr) (nth clssexpr 3)))
                  )
@@ -41,6 +42,7 @@
 
 (defn analyze-class
   [glob-state clssexpr]
+  (println clssexpr)
   (match/match (first clssexpr)
                :noextclssdef (makeclassdef glob-state clssexpr false)
                :extclssdef (makeclassdef glob-state clssexpr true)))
@@ -52,6 +54,50 @@
                :clssdef (analyze-class glob-state (second expr))
                :fndef glob-state)
   )
+
+(defn class-dep
+  [clsdef]
+  (let [type (first clsdef)]
+    (if (= type :noextclssdef)
+      nil
+      (second (nth clsdef 2))
+      )
+    ))
+
+(defn class-name
+  [clsdef]
+  (second clsdef))
+
+
+(defn map-type
+  [type]
+  (match/match (first type)
+               :ident type
+               :tident (second type)
+               :else (first type))
+  )
+
+(defn map-arg
+  [arg]
+  (map-type (second arg))
+  )
+
+(defn map-fun
+  [[_ type [:ident name] argz _]]
+  [name (->FunDef name (map-type type) (map map-arg (rest argz)))]
+  )
+
+(defn funsred
+  [funs]
+  (fn [coll]
+    (reduce conj coll (map map-fun funs))))
+
+(defn bucketize
+  [buffer expr]
+  (if (= :clssdef (first expr))
+    [(conj (first buffer) (second expr)) (second buffer)]
+    [(first buffer) (conj buffer expr)]
+    ))
 
 (defn analize
   [tree]
@@ -68,5 +114,12 @@
                   false
                   (hash-set :void :int :string :boolean)
                   )
-     result (reduce check glob-state (vec tree))]
+     [split-clss split-funs] (reduce bucketize [[] []] tree)
+     classes (do (println split-clss) (util/toposort (vec split-clss) class-name class-dep))
+     new-glob-state (update glob-state :funs (funsred split-funs))
+     result (reduce check new-glob-state (vec tree))
+     ]
+    (print split-funs)
+    ;(println classes)
+    ;(println result)
     (->AnalysisResult tree result)))

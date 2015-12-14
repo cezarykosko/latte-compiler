@@ -6,9 +6,9 @@
 (deftype ParseResult [violations output]
   util/CompilationPhase
   (successful [this]
-    (:violations this))
+    (not (.-violations this)))
   (output [this]
-    (:output this)))
+    (.-output this)))
 
 (def FILENAME
   "latte.bnf")
@@ -44,8 +44,8 @@
     (if (insta/failure? parse)
       (do
         (util/println-err (insta/get-failure parse))
-        (->ParseResult true nil))
-      (->ParseResult false nil)
+        (->ParseResult true parse))
+      (->ParseResult false parse)
       )
     )
   )
