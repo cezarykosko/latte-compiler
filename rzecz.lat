@@ -2,3 +2,11 @@ void main() {
   printInt(14);
   return;
 }
+
+int g(string a) {
+  return 4 + 22;
+}
+
+int f(int a, int b) {
+  return g("132");
+}

@@ -1,5 +1,6 @@
 (ns latte-compiler.static-analysis
   (:require [clojure.core.match :as match]
+            [clojure.algo.monads :as m]
             [latte-compiler.util :as util]))
 
 ;kryteria
@@ -50,20 +51,7 @@
                )
   )
 
-(defn analyze-class
-  [glob-state clssexpr]
-  ;(println clssexpr)
-  (match/match (first clssexpr)
-               :noextclssdef (makeclassdef glob-state clssexpr false)
-               :extclssdef (makeclassdef glob-state clssexpr true)))
 
-(defn check
-  [glob-state expr]
-  ;(println expr)
-  (match/match (first expr)
-               :clssdef (analyze-class glob-state (second expr))
-               :fndef glob-state)
-  )
 
 (defn class-dep
   [clsdef]
@@ -97,11 +85,51 @@
   [name (->FunDef name (map-type type) (map map-arg (rest argz)))]
   )
 
+(require '[clojure.algo.monads :as m]
+         '[latte-compiler.util :as util])
+
+(defn conj-hlp
+  [coll elem]
+  (match/match elem
+               [name _] (if (contains? coll name)
+                          (util/err (concat "function " name " already defined in :" (util/ip-meta elem)))
+                          (util/succ (conj coll elem))
+                          ))
+  )
+
+(defn m-conj
+  [mcoll melem]
+  (m/domonad util/phase-m
+             [
+              coll mcoll
+              elem melem
+              res (conj-hlp coll elem)]
+             res))
+
+
+
 (defn funsred
-  [funs]
-  (fn [coll]
-    ;(println funs)
-    (reduce conj coll (map map-fun funs))))
+  ([funs coll]
+   (m/domonad util/phase-m
+              [mfuns (m-result funs)
+               nfuns (util/succ (map map-fun funs))
+               res  (reduce m-conj (m-result coll) (map util/succ nfuns))]
+              res)))
+
+
+;(funsred (vec [
+;               [:fndef [:void] [:ident "main"] [:args] [:block [:sexp [:expr [:eapp [:ident "printInt"] [:expr [:elitint 1]]]]] [:sexp [:expr [:evar [:ident "return"]]]]]]
+;               [:fndef [:int] [:ident "g"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
+;               [:fndef [:int] [:ident "f"] [:args [:arg [:int] [:ident "a"]] [:arg [:int] [:ident "b"]]] [:block [:ret [:expr [:eapp [:ident "g"] [:expr [:estring "132"]]]]]]]
+;               ])
+;         (hash-map
+;           "printInt" (->FunDef "printInt" :void [:int])
+;           "printString" (->FunDef "printString" :void [:string])
+;           "error" (->FunDef "error" :void [])
+;           "readInt" (->FunDef "readInt" :int [])
+;           "readString" (->FunDef "readString" :string [])
+;           ))
+
 
 (defn bucketize
   [buffer expr]
@@ -111,21 +139,50 @@
     )
   )
 
+(defn analyze-class
+  [glob-state clssexpr]
+  ;(println clssexpr)
+  (util/succ (match/match (first clssexpr)
+                          :noextclssdef (makeclassdef glob-state clssexpr false)
+                          :extclssdef (makeclassdef glob-state clssexpr true))))
+
+(defn analyze-fun
+  [glob-state funexpr]
+  (util/succ glob-state)
+  )
+
+(defn check
+  [glob-state expr]
+  (println expr)
+  (m/domonad util/phase-m
+             [state (m-result glob-state)
+              res (match/match (first expr)
+                               ;:clssdef (analyze-class state (second expr))
+                               :fndef (analyze-fun state expr))]
+             res)
+  )
+
 (defn analize
   [tree]
-  ;(reduce + (map println tree))
   (let
     [glob-state default-state
      [split-clss split-funs] (reduce bucketize [[] []] tree)
-     classes (do (util/toposort (vec split-clss) class-name class-dep))
-     new-glob-state (update glob-state :funs (funsred split-funs))
-     result (reduce check new-glob-state (vec tree))
+     ;classes (do (util/toposort (vec split-clss) class-name class-dep))
      ]
-    (println "")
-    (println "")
-    (println split-funs)
-    (println "")
-    (println "")
-    (println classes)
-    (println (.-classes result))
+    (m/domonad util/phase-m
+               [funs (funsred split-funs (.-funs glob-state))
+                new-glob-state (do (println "A") (println funs) (m-result (update glob-state :funs funs)))
+                result (do (println new-glob-state) (reduce check new-glob-state (vec tree)))
+                ]
+               (do
+                 result)
+               )
+
     ))
+
+(analize (vec [
+               [:fndef [:void] [:ident "main"] [:args] [:block [:sexp [:expr [:eapp [:ident "printInt"] [:expr [:elitint 1]]]]] [:sexp [:expr [:evar [:ident "return"]]]]]]
+               [:fndef [:int] [:ident "g"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
+               [:fndef [:int] [:ident "g"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
+               [:fndef [:int] [:ident "f"] [:args [:arg [:int] [:ident "a"]] [:arg [:int] [:ident "b"]]] [:block [:ret [:expr [:eapp [:ident "g"] [:expr [:estring "132"]]]]]]]
+               ]))

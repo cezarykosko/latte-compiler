@@ -35,8 +35,8 @@
   [code]
   (let [parse (latte code)]
     (if (insta/failure? parse)
-      [:err (insta/get-failure parse)]
-      [:succ parse]
+      (util/err (insta/get-failure parse))
+      (util/succ parse)
       )
     )
   )

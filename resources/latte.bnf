@@ -11,7 +11,7 @@ args = epsilon | arg (<ws ',' ws> arg)*
 
 block = <ws '{' ws> stmts <ws '}' ws>
 <stmts> = (stmt <ws>)*
-<stmt> = empty | bstmt | decl | ass | incr | decr | ret | vret | cond | condelse | while | sexp
+<stmt> = empty / ret / vret / bstmt | decl | ass | incr | decr | cond | condelse | while | sexp
 <empty> = <ws ';' ws>
 <bstmt> = block
 decl = type <wp> items <ws ';' ws>

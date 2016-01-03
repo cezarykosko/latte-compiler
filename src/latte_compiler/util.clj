@@ -8,12 +8,11 @@
     (println msg)
     ))
 
-(defn println-ip-meta
+(defn ip-meta
   [obj]
   (let [m (meta obj)]
-    (binding [*out* *err*]
-      (println (str "line " (:instaparse.gll/start-line m) ", column " (:instaparse.gll/start-column m)))
-      )))
+     (str "line " (:instaparse.gll/start-line m) ", column " (:instaparse.gll/start-column m))
+      ))
 
 (m/defmonad phase-m
   "Monad describing a temporary result of compilation.
@@ -31,6 +30,7 @@
    ])
 
 (defn err [msg] [:err msg])
+(defn succ [data] [:succ data])
 
 (m/domonad phase-m
            [a (m-result 13)
