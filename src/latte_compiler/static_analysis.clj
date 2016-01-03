@@ -13,11 +13,6 @@
 (defrecord FieldDef [name type])
 (defrecord GlobState [classes funs violations std-types])
 
-(deftype AnalysisResult [input glob-state]
-  util/CompilationPhase
-  (successful [this] (not (:violations (.-glob-state this))))
-  (output [this] (.-input this)))
-
 (def default-state
   (->GlobState
     (hash-map)
@@ -45,8 +40,8 @@
                (let [parent-map (get (:classes glob-state) ident)]
                  (if (nil? parent-map)
                    (do
-                     ;(util/println-err (str "ERROR: no such type: " ident " in"))
-                     ;(util/println-ip-meta clssexpr)
+                     (util/println-err (str "ERROR: no such type: " ident " in"))
+                     (util/println-ip-meta clssexpr)
                      (assoc glob-state :violations true)
                      )
                    (makeclassdefmap glob-state parent-map (second clssexpr) (nth clssexpr 3)))
@@ -133,4 +128,4 @@
     (println "")
     (println classes)
     (println (.-classes result))
-    (->AnalysisResult tree result)))
+    ))

@@ -1,30 +1,41 @@
-(ns latte-compiler.util)
+(ns latte-compiler.util
+  (:require [clojure.algo.monads :as m]
+            [clojure.core.match :as match]))
 
 (defn println-err
   [msg]
   (binding [*out* *err*]
-    ;(println msg)
-
+    (println msg)
     ))
 
 (defn println-ip-meta
   [obj]
   (let [m (meta obj)]
     (binding [*out* *err*]
-      ;(println (str "line " (:instaparse.gll/start-line m) ", column " (:instaparse.gll/start-column m)))
+      (println (str "line " (:instaparse.gll/start-line m) ", column " (:instaparse.gll/start-column m)))
       )))
 
-(defprotocol CompilationPhase
-  "temporary result of compilation"
-  (successful [this] "true if no violations occured during this phase")
-  (output [this] "output to be passed to another phase")
-  )
+(m/defmonad phase-m
+  "Monad describing a temporary result of compilation.
+   Phase is successful iff the value stored is [:succ *]
+   otherwise the value is [:err *]"
+  [m-zero [:succ nil]
+   m-result (fn m-result-phase [r]
+              [:succ r])
+   m-bind (fn m-bind-phase
+            [pv f]
+            (match/match pv
+               [:succ val] (f val)
+               [:err msg] pv)
+            )
+   ])
 
-(defn apply-phase
-  [fun prev-phase]
-  (if (successful prev-phase)
-    (fun (output prev-phase))
-    ))
+(defn err [msg] [:err msg])
+
+(m/domonad phase-m
+           [a (m-result 13)
+            b [:err 44]]
+            b)
 
 (defn toposort-hlp-red
   [elem-to-dep deps]

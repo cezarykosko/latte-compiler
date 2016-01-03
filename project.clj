@@ -5,4 +5,5 @@
 
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/core.match "0.3.0-alpha4"]
+                 [org.clojure/algo.monads "0.1.5"]
                  [instaparse "1.4.1"]])

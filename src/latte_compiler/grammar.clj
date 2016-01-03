@@ -3,13 +3,6 @@
             [clojure.edn]
             [latte-compiler.util :as util]))
 
-(deftype ParseResult [violations output]
-  util/CompilationPhase
-  (successful [this]
-    (not (.-violations this)))
-  (output [this]
-    (.-output this)))
-
 (def FILENAME
   "latte.bnf")
 
@@ -42,10 +35,8 @@
   [code]
   (let [parse (latte code)]
     (if (insta/failure? parse)
-      (do
-        (util/println-err (insta/get-failure parse))
-        (->ParseResult true parse))
-      (->ParseResult false parse)
+      [:err (insta/get-failure parse)]
+      [:succ parse]
       )
     )
   )
