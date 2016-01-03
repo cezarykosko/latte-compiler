@@ -42,7 +42,7 @@
                  (if (nil? parent-map)
                    (do
                      (util/println-err (str "ERROR: no such type: " ident " in"))
-                     (util/println-ip-meta clssexpr)
+                     ;(util/println-ip-meta clssexpr)
                      (assoc glob-state :violations true)
                      )
                    (makeclassdefmap glob-state parent-map (second clssexpr) (nth clssexpr 3)))
@@ -81,8 +81,11 @@
   )
 
 (defn map-fun
-  [[_ type [:ident name] argz _]]
-  [name (->FunDef name (map-type type) (map map-arg (rest argz)))]
+  [fun]
+  (match/match fun
+               [_ type [:ident name] argz _]
+               (let [fundef (->FunDef name (map-type type) (map map-arg (rest argz)))]
+                 [name (with-meta fundef (meta fun))]))
   )
 
 (require '[clojure.algo.monads :as m]
@@ -91,8 +94,8 @@
 (defn conj-hlp
   [coll elem]
   (match/match elem
-               [name _] (if (contains? coll name)
-                          (util/err (concat "function " name " already defined in :" (util/ip-meta elem)))
+               [name fndef] (if (contains? coll name)
+                          (util/err (str "function " name " defined more than once in: " (util/ip-meta fndef)))
                           (util/succ (conj coll elem))
                           ))
   )
@@ -106,8 +109,6 @@
               res (conj-hlp coll elem)]
              res))
 
-
-
 (defn funsred
   ([funs coll]
    (m/domonad util/phase-m
@@ -115,7 +116,6 @@
                nfuns (util/succ (map map-fun funs))
                res  (reduce m-conj (m-result coll) (map util/succ nfuns))]
               res)))
-
 
 ;(funsred (vec [
 ;               [:fndef [:void] [:ident "main"] [:args] [:block [:sexp [:expr [:eapp [:ident "printInt"] [:expr [:elitint 1]]]]] [:sexp [:expr [:evar [:ident "return"]]]]]]
@@ -171,8 +171,8 @@
      ]
     (m/domonad util/phase-m
                [funs (funsred split-funs (.-funs glob-state))
-                new-glob-state (do (println "A") (println funs) (m-result (update glob-state :funs funs)))
-                result (do (println new-glob-state) (reduce check new-glob-state (vec tree)))
+                new-glob-state (m-result (update glob-state :funs funs))
+                result (reduce check new-glob-state (vec tree))
                 ]
                (do
                  result)

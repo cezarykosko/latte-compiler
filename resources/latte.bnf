@@ -11,7 +11,7 @@ args = epsilon | arg (<ws ',' ws> arg)*
 
 block = <ws '{' ws> stmts <ws '}' ws>
 <stmts> = (stmt <ws>)*
-<stmt> = empty / ret / vret / bstmt | decl | ass | incr | decr | cond | condelse | while | sexp
+<stmt> = vret / ret / empty / (bstmt | decl | ass | incr | decr | cond | condelse | while | sexp)
 <empty> = <ws ';' ws>
 <bstmt> = block
 decl = type <wp> items <ws ';' ws>
@@ -23,7 +23,7 @@ ass = (ident | fident) <ws '=' ws> expr <ws ';' ws>
 incr = ident <ws '++' ws ';' ws>
 decr = ident <ws '--' ws ';' ws>
 ret = <'return' wp> expr <ws ';' ws>
-vret = <'return' ws ';' ws>
+vret = <'return' ws ';' ws> | <'return;'>
 cond = <'if' ws '(' ws> expr <ws ')' ws> stmt
 condelse = <'if' ws '(' ws> expr <ws ')' ws> stmt <ws 'else' ws> stmt
 while = <'while' ws '(' ws> expr <ws ')' ws> stmt
