@@ -176,8 +176,32 @@
                           :noextclssdef (makeclassdef glob-state clssexpr false)
                           :extclssdef (makeclassdef glob-state clssexpr true))))
 
+(defn add-arg
+  [vmap arg]
+  (match/match arg [_ type [_ ident]]
+               (add-var vmap ident type)
+               )
+  )
+
+(defn add-args
+  [vmap args]
+  (loop
+    [vmap vmap
+     args args]
+    (if (nil? args)
+      vmap
+      (recur (add-arg vmap (first args)) (rest args))))
+  )
+
 (defn analyze-fun
   [glob-state funexpr]
+  (match/match funexpr [_ [type] _ args block]
+               (let
+                 [vars (add-args (vars-map) (rest args))]
+
+                 )
+
+               )
   (util/succ glob-state)
   )
 
