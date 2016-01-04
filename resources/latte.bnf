@@ -30,7 +30,7 @@ while = <'while' ws '(' ws> expr <ws ')' ws> stmt
 sexp = expr <ws ';' ws>
 
 <vtype> = type | void
-<type> = (int | string | bool) / tident
+<type> = int / string / bool (*/ tident*)
 tident = ident
 fident = ident <ws '.' ws> ident
 int = <'int'>
@@ -64,13 +64,13 @@ eapp = ident <ws ob ws> exprs <ws cb ws>
 ethis = <'this'>
 <eclassfield> = fident | fapp
 fapp = ident <ws '.' ws> eapp
-estring = string
+estring = stringlit
 eclassinit = <'new' wp> ident
 ident = letter (letter | digit | '_' | "'")*
 <digit> = #'[0-9]'
 <letter> = #'[a-zA-Z]'
 <char> =  #'[.]'
-<string> = <'"'> #'([^"\\]|(\\["\\nt]))*' <'"'>
+<stringlit> = <'"'> #'([^"\\]|(\\["\\nt]))*' <'"'>
 
 <addop> = plus | minus
 plus = <ws '+' ws>
