@@ -117,20 +117,6 @@
                res (reduce m-conj (m-result coll) (map util/succ nfuns))]
               res)))
 
-;(funsred (vec [
-;               [:fndef [:void] [:ident "main"] [:args] [:block [:sexp [:expr [:eapp [:ident "printInt"] [:expr [:elitint 1]]]]] [:sexp [:expr [:evar [:ident "return"]]]]]]
-;               [:fndef [:int] [:ident "g"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
-;               [:fndef [:int] [:ident "f"] [:args [:arg [:int] [:ident "a"]] [:arg [:int] [:ident "b"]]] [:block [:ret [:expr [:eapp [:ident "g"] [:expr [:estring "132"]]]]]]]
-;               ])
-;         (hash-map
-;           "printInt" (->FunDef "printInt" :void [:int])
-;           "printString" (->FunDef "printString" :void [:string])
-;           "error" (->FunDef "error" :void [])
-;           "readInt" (->FunDef "readInt" :int [])
-;           "readString" (->FunDef "readString" :string [])
-;           ))
-
-
 (defn bucketize
   [buffer expr]
   (if (= :clssdef (first expr))
@@ -148,18 +134,6 @@
     (util/err "no correct main function found")
     )
   )
-
-(= (->FunDef "main" :int []) (->FunDef "main" :void []))
-;(main-check
-;  (hash-map
-;    "main" (->FunDef "main" :void [])
-;    "printInt" (->FunDef "printInt" :void [:int])
-;    "printString" (->FunDef "printString" :void [:string])
-;    "error" (->FunDef "error" :void [])
-;    "readInt" (->FunDef "readInt" :int [])
-;    "readString" (->FunDef "readString" :string [])
-;    )
-;  )
 
 (defn analyze-class
   [glob-state clssexpr]
