@@ -95,9 +95,9 @@
   [coll elem]
   (match/match elem
                [name fndef] (if (contains? coll name)
-                          (util/err (str "function " name " defined more than once in: " (util/ip-meta fndef)))
-                          (util/succ (conj coll elem))
-                          ))
+                              (util/err (str "function " name " defined more than once in: " (util/ip-meta fndef)))
+                              (util/succ (conj coll elem))
+                              ))
   )
 
 (defn m-conj
@@ -114,7 +114,7 @@
    (m/domonad util/phase-m
               [mfuns (m-result funs)
                nfuns (util/succ (map map-fun funs))
-               res  (reduce m-conj (m-result coll) (map util/succ nfuns))]
+               res (reduce m-conj (m-result coll) (map util/succ nfuns))]
               res)))
 
 ;(funsred (vec [
@@ -139,6 +139,28 @@
     )
   )
 
+(defn main-check
+  [glob-state]
+  (if (=
+        (second (find (.-funs glob-state) "main"))
+        (->FunDef "main" :int []))
+    (util/succ glob-state)
+    (util/err "no correct main function found")
+    )
+  )
+
+(= (->FunDef "main" :int []) (->FunDef "main" :void []))
+;(main-check
+;  (hash-map
+;    "main" (->FunDef "main" :void [])
+;    "printInt" (->FunDef "printInt" :void [:int])
+;    "printString" (->FunDef "printString" :void [:string])
+;    "error" (->FunDef "error" :void [])
+;    "readInt" (->FunDef "readInt" :int [])
+;    "readString" (->FunDef "readString" :string [])
+;    )
+;  )
+
 (defn analyze-class
   [glob-state clssexpr]
   ;(println clssexpr)
@@ -155,11 +177,11 @@
   [glob-state expr]
   (println expr)
   (m/domonad util/phase-m
-             [state (m-result glob-state)
+             [state glob-state
               res (match/match (first expr)
                                ;:clssdef (analyze-class state (second expr))
                                :fndef (analyze-fun state expr))]
-             res)
+             (do (println res) res))
   )
 
 (defn analize
@@ -171,8 +193,9 @@
      ]
     (m/domonad util/phase-m
                [funs (funsred split-funs (.-funs glob-state))
-                new-glob-state (m-result (update glob-state :funs funs))
-                result (reduce check new-glob-state (vec tree))
+                new-glob-state (m-result (update glob-state :funs (fn [_] funs)))
+                n-glob-state (do (println new-glob-state) (main-check new-glob-state))
+                result (do (println n-glob-state) (reduce check (m-result n-glob-state) (vec tree)))
                 ]
                (do
                  result)
@@ -181,8 +204,8 @@
     ))
 
 (analize (vec [
-               [:fndef [:void] [:ident "main"] [:args] [:block [:sexp [:expr [:eapp [:ident "printInt"] [:expr [:elitint 1]]]]] [:sexp [:expr [:evar [:ident "return"]]]]]]
+               [:fndef [:int] [:ident "main"] [:args] [:block [:sexp [:expr [:eapp [:ident "printInt"] [:expr [:elitint 1]]]]] [:sexp [:expr [:evar [:ident "return"]]]]]]
                [:fndef [:int] [:ident "g"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
-               [:fndef [:int] [:ident "g"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
+               [:fndef [:int] [:ident "h"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
                [:fndef [:int] [:ident "f"] [:args [:arg [:int] [:ident "a"]] [:arg [:int] [:ident "b"]]] [:block [:ret [:expr [:eapp [:ident "g"] [:expr [:estring "132"]]]]]]]
                ]))
