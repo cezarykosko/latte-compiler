@@ -4,9 +4,7 @@
             [latte-compiler.util :as util]))
 
 ;kryteria
-; -> nazwy
 ; -> typy
-; -> jest main
 ; -> returny
 
 (defrecord ClassDef [extends fields funs])
@@ -187,22 +185,52 @@
   [vmap args]
   (loop
     [vmap vmap
-     args args]
-    (if (nil? args)
+     args (rest args)]
+    (if (empty? args)
       vmap
       (recur (add-arg vmap (first args)) (rest args))))
   )
 
-(defn analyze-fun
+(defn terminated
+  [code]
+  (match/match (first code)
+               :block (some terminated (rest code))
+               :vret true
+               :ret true
+               :cond (match/match code
+                                  [_ [:expr [:elittrue]] b] (recur b)
+                                  :else false
+                                  )
+               :condelse (match/match code
+                                      [_ [:expr [:elittrue]] b1 _] (recur b1)
+                                      [_ [:expr [:elitfalse]] _ b2] (recur b2)
+                                      :else false
+                                      )
+               :while (match/match code
+                                   [_ [:expr [:elittrue]] _] true
+                                   [_ _ b] (recur b)
+                                   )
+               :else false
+               ))
+
+(defn check-type
   [glob-state funexpr]
-  (match/match funexpr [_ [type] _ args block]
+  (match/match funexpr [_ [type] [_ name] args block]
                (let
-                 [vars (add-args (vars-map) (rest args))]
-
+                 [vars (add-args (vars-map) args)]
                  )
-
                )
   (util/succ glob-state)
+  )
+
+(defn analyze-fun
+  [glob-state funexpr]
+  (match/match funexpr [_ [type] [_ name] args block]
+               (if (and (not (= type :void)) (not (terminated block)))
+                 (util/err (str "return not found in function " name "\n" (util/ip-meta funexpr)))
+                 (check-type glob-state funexpr)
+                 )
+               )
   )
 
 (defn check
@@ -235,9 +263,9 @@
 
     ))
 
-(analize (vec [
-               [:fndef [:int] [:ident "main"] [:args] [:block [:sexp [:expr [:eapp [:ident "printInt"] [:expr [:elitint 1]]]]] [:sexp [:expr [:evar [:ident "return"]]]]]]
-               [:fndef [:int] [:ident "g"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
-               [:fndef [:int] [:ident "h"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
-               [:fndef [:int] [:ident "f"] [:args [:arg [:int] [:ident "a"]] [:arg [:int] [:ident "b"]]] [:block [:ret [:expr [:eapp [:ident "g"] [:expr [:estring "132"]]]]]]]
-               ]))
+;(analize (vec [
+;               [:fndef [:int] [:ident "main"] [:args] [:block [:sexp [:expr [:eapp [:ident "printInt"] [:expr [:elitint 1]]]]] [:sexp [:expr [:evar [:ident "return"]]]]]]
+;               [:fndef [:int] [:ident "g"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
+;               [:fndef [:int] [:ident "h"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
+;               [:fndef [:int] [:ident "f"] [:args [:arg [:int] [:ident "a"]] [:arg [:int] [:ident "b"]]] [:block [:ret [:expr [:eapp [:ident "g"] [:expr [:estring "132"]]]]]]]
+;               ]))

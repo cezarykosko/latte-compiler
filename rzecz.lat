@@ -1,5 +1,14 @@
-void main() {
+int main() {
   printInt(14);
+  if (true) {
+    return;
+  } else {
+    return;
+  }
+
+  while (a == 3) {
+    return;
+  }
   return;
 }
 
