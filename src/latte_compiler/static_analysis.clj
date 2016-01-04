@@ -204,12 +204,11 @@
                :condelse (match/match code
                                       [_ [:expr [:elittrue]] b1 _] (recur b1)
                                       [_ [:expr [:elitfalse]] _ b2] (recur b2)
-                                      :else false
-                                      )
+                                      :else false)
                :while (match/match code
                                    [_ [:expr [:elittrue]] _] true
-                                   [_ _ b] (recur b)
-                                   )
+                                   [_ [:expr [:elitfalse]] _] false
+                                   [_ _ b] (recur b))
                :else false
                ))
 
@@ -226,7 +225,7 @@
 (defn analyze-fun
   [glob-state funexpr]
   (match/match funexpr [_ [type] [_ name] args block]
-               (if (and (not (= type :void)) (not (terminated block)))
+               (if (not (or (= type :void) (terminated block)))
                  (util/err (str "return not found in function " name "\n" (util/ip-meta funexpr)))
                  (check-type glob-state funexpr)
                  )
