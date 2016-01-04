@@ -12,7 +12,7 @@
 (defrecord ClassDef [extends fields funs])
 (defrecord FunDef [name outType inTypes])
 (defrecord FieldDef [name type])
-(defrecord GlobState [classes funs violations std-types])
+(defrecord GlobState [classes funs std-types])
 
 (def default-state
   (->GlobState
@@ -24,10 +24,44 @@
       "readInt" (->FunDef "readInt" :int [])
       "readString" (->FunDef "readString" :string [])
       )
-    false
     (hash-set :void :int :string :boolean)
     ))
 
+(defn vars-map
+  []
+  (list (hash-map)))
+
+(defn add-var
+  [map var type]
+  (let
+    [curr-scope (peek map)
+     new-scope (conj curr-scope [var type])
+     ]
+    (conj (pop map) new-scope)
+    )
+  )
+
+(defn lookup-var
+  [map var]
+  (if (nil? map)
+    nil
+    (let
+      [type (find (peek map) var)]
+      (if (nil? type)
+        (lookup-var (pop map) var)
+        type
+        )
+      )
+    )
+  )
+
+(defn new-scope
+  [map]
+  (conj map (hash-map)))
+
+(defn rm-scope
+  [map]
+  (pop map))
 
 (defn makeclassdefmap
   [glob-state startmap name classdefs]
