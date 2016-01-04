@@ -1,6 +1,8 @@
 # latte-compiler
 
-A Clojure library designed to ... well, that part is up to you.
+A Clojure compiler of [Latte programming language](http://www.mimuw.edu.pl/~ben/Zajecia/Mrj2015/Latte/)
+
+[![Circle CI](https://circleci.com/gh/cezarykosko/latte-compiler/tree/master.svg?style=svg)](https://circleci.com/gh/cezarykosko/latte-compiler/tree/master)
 
 ## Usage
 
