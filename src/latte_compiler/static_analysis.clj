@@ -83,8 +83,6 @@
                )
   )
 
-
-
 (defn class-dep
   [clsdef]
   (let [type (first clsdef)]
@@ -214,34 +212,42 @@
 
 (defn check-type
   [glob-state funexpr]
-  (match/match funexpr [_ [type] [_ name] args block]
-               (let
-                 [vars (add-args (vars-map) args)]
-                 )
-               )
-  (util/succ glob-state)
+  ;(match/match funexpr [_ [type] [_ name] args block]
+  ;             (m/domonad util/phase-m
+  ;               [vars (m-result (add-args (vars-map) args))]
+  ;               )
+  ;             )
+  (util/succ funexpr)
   )
 
 (defn analyze-fun
   [glob-state funexpr]
   (match/match funexpr [_ [type] [_ name] args block]
                (if (not (or (= type :void) (terminated block)))
-                 (util/err (str "return not found in function " name "\n" (util/ip-meta funexpr)))
-                 (check-type glob-state funexpr)
+                 (do (println "err") (util/err (str "return not found in function " name "\n" (util/ip-meta funexpr))))
+                 (do (println funexpr) (check-type glob-state funexpr))
                  )
                )
   )
 
 (defn check
-  [glob-state expr]
-  (println expr)
+  [glob-state]
+  (println glob-state)
+  (fn [expr]
+    (m/domonad util/phase-m
+               [state glob-state
+                res (match/match (first expr)
+                                 ;:clssdef (analyze-class state (second expr))
+                                 :fndef (analyze-fun state expr))]
+               (do (println "ser") (println res) res))))
+
+(defn merge-checks
+  [acc cur]
   (m/domonad util/phase-m
-             [state glob-state
-              res (match/match (first expr)
-                               ;:clssdef (analyze-class state (second expr))
-                               :fndef (analyze-fun state expr))]
-             (do (println res) res))
-  )
+             [acc acc
+              curr cur]
+              (conj acc curr)
+             ))
 
 (defn analize
   [tree]
@@ -253,18 +259,15 @@
     (m/domonad util/phase-m
                [funs (funsred split-funs (.-funs glob-state))
                 new-glob-state (m-result (update glob-state :funs (fn [_] funs)))
-                n-glob-state (do (println new-glob-state) (main-check new-glob-state))
-                result (do (println n-glob-state) (reduce check (m-result n-glob-state) (vec tree)))
+                n-glob-state (do (println "A") (main-check new-glob-state))
+                result (do (println "B") (reduce merge-checks (m-result []) (map (check (m-result n-glob-state)) tree)))
                 ]
-               (do
-                 result)
-               )
+               result
+               )))
 
-    ))
-
-;(analize (vec [
-;               [:fndef [:int] [:ident "main"] [:args] [:block [:sexp [:expr [:eapp [:ident "printInt"] [:expr [:elitint 1]]]]] [:sexp [:expr [:evar [:ident "return"]]]]]]
-;               [:fndef [:int] [:ident "g"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
-;               [:fndef [:int] [:ident "h"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
-;               [:fndef [:int] [:ident "f"] [:args [:arg [:int] [:ident "a"]] [:arg [:int] [:ident "b"]]] [:block [:ret [:expr [:eapp [:ident "g"] [:expr [:estring "132"]]]]]]]
-;               ]))
+(analize (vec [
+               [:fndef [:int] [:ident "main"] [:args] [:block [:sexp [:expr [:eapp [:ident "printInt"] [:expr [:elitint 1]]]]] [:vret]]]
+               [:fndef [:int] [:ident "g"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
+               [:fndef [:int] [:ident "h"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
+               [:fndef [:int] [:ident "f"] [:args [:arg [:int] [:ident "a"]] [:arg [:int] [:ident "b"]]] [:block [:ret [:expr [:eapp [:ident "g"] [:expr [:estring "132"]]]]]]]
+               ]))
