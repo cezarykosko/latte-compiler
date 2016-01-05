@@ -24,12 +24,12 @@
 
 (def latte
   #(->> (latte_parser %)
-        (insta/add-line-and-column-info-to-metadata %)
-        (insta/transform
-          {
-           :ident   stringify
-           :elitint intify
-           })))
+    (insta/add-line-and-column-info-to-metadata %)
+    (insta/transform
+      {
+       :ident   stringify
+       :elitint intify
+       })))
 
 (defn parse
   [code]
