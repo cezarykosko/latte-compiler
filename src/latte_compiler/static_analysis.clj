@@ -210,15 +210,20 @@
                :else false
                ))
 
+(defn annotate-block
+  [glob-state vars block]
+  (util/succ block))
+
 (defn check-type
   [glob-state funexpr]
-  ;(match/match funexpr [_ [type] [_ name] args block]
-  ;             (m/domonad util/phase-m
-  ;               [vars (m-result (add-args (vars-map) args))]
-  ;               )
-  ;             )
-  (util/succ funexpr)
-  )
+  (match/match funexpr [fun type [ident name] args block]
+               (m/domonad util/phase-m
+                          [
+                           vars (m-result (add-args (vars-map) args))
+                           nblock (annotate-block glob-state vars block)
+                           ]
+                          [fun type [ident name] args nblock]
+                          )))
 
 (defn analyze-fun
   [glob-state funexpr]
@@ -246,7 +251,7 @@
   (m/domonad util/phase-m
              [acc acc
               curr cur]
-              (conj acc curr)
+             (conj acc curr)
              ))
 
 (defn analize
