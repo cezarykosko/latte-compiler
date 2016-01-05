@@ -1,7 +1,8 @@
 int main() {
   printInt(14);
+  error();
   if (true) {
-    return;
+    ;
   } else {
     return;
   }

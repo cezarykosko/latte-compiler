@@ -1,0 +1,15 @@
+int main() {
+  int a, b = 0;
+  a++;
+  b = b + 3;
+  if (a > b) {
+    string c = "ololo", d = "elele";
+    d = c + d;
+    return f(d);
+    }
+  error();
+}
+
+int f(string a) {
+  return 3 + 4 / 2;
+  }

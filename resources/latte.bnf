@@ -38,7 +38,7 @@ string = <'string'>
 bool = <'boolean'>
 void = <'void'>
 
-expr = exp0
+<expr> = exp0
 <exprs> = (expr (<ws ',' ws> expr)*)?
 <bexpr> = <ws ob ws> expr <ws cb ws>
 <exp0> = eor | exp1 | bexpr

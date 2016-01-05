@@ -1,0 +1,6 @@
+int main() {
+  while(false) {
+    printInt(32);
+    }
+  error();
+}
