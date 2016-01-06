@@ -7,6 +7,7 @@
     [latte-compiler.static-analysis :as analysis]
     [latte-compiler.compilation :as compilation]
     )
+  (:gen-class)
   )
 
 (defn run
