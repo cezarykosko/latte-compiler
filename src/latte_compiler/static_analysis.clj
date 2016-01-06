@@ -28,11 +28,11 @@
   (->GlobState
     (hash-map)
     (hash-map
-      [:ident "printInt"] (->FunDef "printInt" [:void] [[:int]])
-      [:ident "printString"] (->FunDef "printString" [:void] [[:string]])
-      [:ident "error"] (->FunDef "error" [:void] [])
-      [:ident "readInt"] (->FunDef "readInt" [:int] [])
-      [:ident "readString"] (->FunDef "readString" [:string] [])
+      [:ident "printInt"] (->FunDef [:ident "printInt"] [:void] [[:int]])
+      [:ident "printString"] (->FunDef [:ident "printString"] [:void] [[:string]])
+      [:ident "error"] (->FunDef [:ident "error"] [:void] [])
+      [:ident "readInt"] (->FunDef [:ident "readInt"] [:int] [])
+      [:ident "readString"] (->FunDef [:ident "readString"] [:string] [])
       )
     (hash-set :void :int :string :boolean)
     ))
@@ -54,8 +54,7 @@
 (defn print-var
   [var]
   (match/match var
-    [:ident name] (str name)
-    :else "dsdsa"))
+    [:ident name] (str name)))
 
 (defn lookup-var
   [map var location]

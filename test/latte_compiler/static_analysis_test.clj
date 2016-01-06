@@ -16,27 +16,27 @@
 
 (deftest maptype
   (testing "type mapping")
-  (is (= (static-analysis/map-type [:tident [:ident "Ololo"]]) [:ident "Ololo"]))
+  (is (= (static-analysis/map-type [:tident [:ident "Ololo"]]) [:tident [:ident "Ololo"]]))
   (is (= (static-analysis/map-type [:ident "Ololo"]) [:ident "Ololo"]))
-  (is (= (static-analysis/map-type [:int]) :int))
+  (is (= (static-analysis/map-type [:int]) [:int]))
   )
 
 (deftest maparg
   (testing "arg mapping")
-  (is (= (static-analysis/map-arg [:arg [:tident [:ident "Ololo"]] [:ident "dsada"]]) [:ident "Ololo"]))
+  (is (= (static-analysis/map-arg [:arg [:tident [:ident "Ololo"]] [:ident "dsada"]]) [:tident [:ident "Ololo"]]))
   )
 
 (deftest mapfun
   (testing "fun mapping")
   (is (= (static-analysis/map-fun [:fndef [:void] [:ident "neenene"] [:args [:arg [:int] [:ident "rzecz"]]] [:block]])
-         ["neenene" (static-analysis/->FunDef "neenene" :void [:int])]))
+         [[:ident "neenene"] (static-analysis/->FunDef [:ident "neenene"] [:void] [[:int]])]))
   (is (= (static-analysis/map-fun [:fndef [:void] [:ident "neenene"] [:args] [:block]])
-         ["neenene" (static-analysis/->FunDef "neenene" :void [])]))
+         [[:ident "neenene"] (static-analysis/->FunDef [:ident "neenene"] [:void] [])]))
   )
 
 (deftest varmap
   (testing "variable map")
-  (is (= (static-analysis/lookup-var (static-analysis/add-arg (static-analysis/vars-map) [:arg [:int] [:ident "a"]]) "a") ["a" [:int]]))
+  (is (= (static-analysis/lookup-var (static-analysis/add-arg (static-analysis/vars-map) [:arg [:int] [:ident "a"]]) [:ident "a"] "") [:succ [:int]]))
   (is (= (static-analysis/add-args (static-analysis/vars-map) [:args]) (static-analysis/vars-map)))
   (is (= (static-analysis/add-args (static-analysis/vars-map) [:args [:arg [:int] [:ident "a"]]]) (static-analysis/add-arg (static-analysis/vars-map) [:arg [:int] [:ident "a"]]))))
 
