@@ -27,6 +27,9 @@
                    (util/println-err "OK")
                    (compilation/asm-compile tree)
                    )
-    [:err msg] (util/println-err msg))
+    [:err msg] (do
+                 (util/println-err msg)
+                 (System/exit 1)
+                 ))
   )
 

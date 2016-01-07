@@ -538,17 +538,3 @@
        ]
       result
       )))
-
-;(println (analize (vec [
-;                        [:fndef [:int] [:ident "main"] [:args] [:block [:sexp [:eapp [:ident "printInt"] [:elitint 1]]] [:sexp [:eapp [:ident "error"]]] [:condelse [:elittrue] [:block] [:block [:ret [:elitint 0]]]] [:while [:erel [:evar [:ident "a"]] [:eq] [:elitint 3]] [:block [:ret [:elitint 0]]]] [:ret [:elitint 132]]]]
-;                        ])))
-;;
-;(println (analize (vec [
-;                        [:fndef [:int] [:ident "main"] [:args] [:block [:incr [:ident "a"]] [:ret [:estring "abc"]]]]])))
-
-;(analize (vec [
-;               [:fndef [:int] [:ident "main"] [:args] [:block [:sexp [:expr [:eapp [:ident "printInt"] [:expr [:elitint 1]]]]] [:vret]]]
-;               [:fndef [:int] [:ident "g"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
-;               [:fndef [:int] [:ident "h"] [:args [:arg [:tident [:ident "string"]] [:ident "a"]]] [:block [:ret [:expr [:eadd [:elitint 4] [:plus] [:elitint 2]]]]]]
-;               [:fndef [:int] [:ident "f"] [:args [:arg [:int] [:ident "a"]] [:arg [:int] [:ident "b"]]] [:block [:ret [:expr [:eapp [:ident "g"] [:expr [:estring "132"]]]]]]]
-;               ]))

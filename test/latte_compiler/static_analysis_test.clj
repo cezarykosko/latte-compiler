@@ -33,11 +33,3 @@
   (is (= (static-analysis/map-fun [:fndef [:void] [:ident "neenene"] [:args] [:block]])
          [[:ident "neenene"] (static-analysis/->FunDef [:ident "neenene"] [:void] [])]))
   )
-
-(deftest varmap
-  (testing "variable map")
-  (is (= (static-analysis/lookup-var (static-analysis/add-arg (static-analysis/vars-map) [:arg [:int] [:ident "a"]]) [:ident "a"] "") [:succ [:int]]))
-  (is (= (static-analysis/add-args (static-analysis/vars-map) [:args]) (static-analysis/vars-map)))
-  (is (= (static-analysis/add-args (static-analysis/vars-map) [:args [:arg [:int] [:ident "a"]]]) (static-analysis/add-arg (static-analysis/vars-map) [:arg [:int] [:ident "a"]]))))
-
-

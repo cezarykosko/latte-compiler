@@ -10,6 +10,7 @@ LIBPATH=$(dirname $BASH_SOURCE)/target/utils.o
 
 if [ -f $JARPATH ]
 then
+  rm $FILEDIR$FILENAME
   java -jar $JARPATH $FILEPATH > $FILEDIR$FILENAME.s
   if [ $? -ne 0 ]
   then

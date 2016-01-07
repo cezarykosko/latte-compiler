@@ -69,11 +69,8 @@
     (str (* 4 offset) "(" addr ")")))
 
 (def eax "%eax")
-(def ebx "%ebx")
 (def ecx "%ecx")
 (def edx "%edx")
-(def esi "%esi")
-(def edi "%edi")
 (def ebp "%ebp")
 (def esp "%esp")
 
@@ -213,13 +210,11 @@
       :eapp (let
               [ident (second (second expr))
                args (reverse (third expr))
-               _ (push_ nil ebx)
-               _ (move_ nil esp ebx)
+               nargs (count args)
                nlc (reduce #(print-expr name %2 %1)
                      label-count args)]
               (println (str "\tcall " ident))
-              (move_ nil ebx esp)
-              (pop_ nil ebx)
+              (println (str "\taddl\t" (const (* 4 nargs)) ", " esp))
               (push_ type eax)
               nlc
               )
