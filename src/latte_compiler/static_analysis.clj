@@ -81,7 +81,7 @@
 (defn lookup-var
   [[map a b c] var location]
   (if (empty? map)
-    (do (println "starem") (util/err (str "var " (print-var var) " not found in: " location)))
+    (util/err (str "var " (print-var var) " not found in: " location))
     (let
       [type (find (peek map) var)]
       (if (nil? type)
@@ -94,10 +94,6 @@
 
 (defn new-scope
   [[map num-vars num-strings strings]]
-  (println map)
-  (println num-vars)
-  (println num-strings)
-  (println strings)
   [(conj map (hash-map)) num-vars num-strings strings])
 
 (defn rm-scope
@@ -110,7 +106,6 @@
 
 (defn makeclassdef
   [glob-state clssexpr extends]
-  ;(println clssexpr)
   (match/match [extends (nth clssexpr 2)]
     [true [:tident [:ident ident]]]
     (let [parent-map (get (:classes glob-state) ident)]
@@ -210,7 +205,6 @@
 
 (defn analyze-class
   [glob-state clssexpr]
-  ;(println clssexpr)
   (util/succ (match/match (first clssexpr)
                :noextclssdef (makeclassdef glob-state clssexpr false)
                :extclssdef (makeclassdef glob-state clssexpr true))))
@@ -264,11 +258,19 @@
     [:bool] "bool"
     [:tident [:ident a]] a))
 
+(defn print-args
+  [args]
+  (if (empty? args)
+    "none"
+    (clojure.string/join "," (map print-type args))
+    )
+  )
+
 (defn check-types
   [exp-type actual-type res location]
   (m/domonad util/phase-m
     [exp-type exp-type
-     actual-type (do (println actual-type) actual-type)
+     actual-type actual-type
      res (if (= actual-type exp-type)
            (util/succ res)
            (util/err (str "return type invalid; expected " (print-type exp-type) ", found " (print-type actual-type) " in " location)))
@@ -308,7 +310,7 @@
              [[nvars inside-expr] (annotate-expr glob-state vars (second expr))
               res (if (= (get-type inside-expr) [:int])
                     (util/succ [nvars (with-type [:neg inside-expr] [:int])])
-                    (util/err (str "expected int, found " (print-type (get-type inside-expr)) " in: " location))
+                    (util/err (str "expr invalid; expected int, found " (print-type (get-type inside-expr)) " in: " location))
                     )]
              res
              )
@@ -316,7 +318,7 @@
              [[nvars inside-expr] (annotate-expr glob-state vars (second expr))
               res (if (= (get-type inside-expr) [:bool])
                     (util/succ [nvars (with-type [:not inside-expr] [:bool])])
-                    (util/err (str "expected bool, found " (print-type (get-type inside-expr)) " in: " location))
+                    (util/err (str "expr invalid; expected bool, found " (print-type (get-type inside-expr)) " in: " location))
                     )]
              res
              )
@@ -327,7 +329,7 @@
                         (= (get-type lexpr) [:bool])
                         (= (get-type rexpr) [:bool]))
                     (util/succ [vars2 (with-type [:eor lexpr rexpr] [:bool])])
-                    (util/err (str "expected bool, bool, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+                    (util/err (str "expr invalid; expected bool, bool, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
                     )
               ]
              res)
@@ -338,7 +340,7 @@
                          (= (get-type lexpr) [:bool])
                          (= (get-type rexpr) [:bool]))
                      (util/succ [vars2 (with-type [:eand lexpr rexpr] [:bool])])
-                     (util/err (str "expected bool, bool, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+                     (util/err (str "expr invalid; expected bool, bool, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
                      )
                ]
               res)
@@ -350,7 +352,7 @@
                          (= (get-type lexpr) [:int])
                          (= (get-type rexpr) [:int]))
                      (util/succ [vars2 (with-type [:erel lexpr op rexpr] [:bool])])
-                     (util/err (str "expected int,int, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+                     (util/err (str "expr invalid; expected int,int, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
                      )
                ]
               res)
@@ -362,7 +364,7 @@
                          (= (get-type lexpr) [:int])
                          (= (get-type rexpr) [:int]))
                      (util/succ [vars2 (with-type [:emul lexpr op rexpr] [:int])])
-                     (util/err (str "expected int,int, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+                     (util/err (str "expr invalid; expected int,int, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
                      )
                ]
               res)
@@ -375,7 +377,7 @@
                            (= (get-type lexpr) [:int])
                            (= (get-type rexpr) [:int]))
                        (util/succ [vars2 (with-type [:eadd lexpr [:minus] rexpr] [:int])])
-                       (util/err (str "expected int,int, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+                       (util/err (str "expr invalid; expected int,int, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
                        )
                  ]
                 res)
@@ -391,23 +393,21 @@
                              (= (get-type lexpr) [:string])
                              (= (get-type rexpr) [:string])))
                        (util/succ [vars2 (with-type [:eadd lexpr [:plus] rexpr] (get-type lexpr))])
-                       (util/err (str "expected int,int or string,string, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+                       (util/err (str "expr invalid; expected int,int or string,string, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
                        )
                  ]
                 res)
               )
       :eapp (m/domonad util/phase-m
               [ident (m-result (second expr))
-               [nvar args] (reduce (fn [buff tmp] (m/domonad util/phase-m [[tmvar tmargs] buff [ntmvar nexpr] (annotate-expr glob-state tmvar tmp)] [ntmvar (conj tmargs nexpr)])) (m-result [vars []]) (rest (rest expr))
-                             ;(map #(annotate-expr glob-state vars %) (rest (rest expr)))
-                             )
+               [nvar args] (reduce (fn [buff tmp] (m/domonad util/phase-m [[tmvar tmargs] buff [ntmvar nexpr] (annotate-expr glob-state tmvar tmp)] [ntmvar (conj tmargs nexpr)])) (m-result [vars []]) (rest (rest expr)))
                actargtypes (m-result (vec (map get-type args)))
                fundef (m-result (second (find (.-funs glob-state) ident)))
                expargtypes (m-result (.-inTypes fundef))
                outtype (m-result (.-outType fundef))
                res (if (= expargtypes actargtypes)
                      (util/succ [nvar (with-type [:eapp ident args] outtype)])
-                     (do (println ident) (println expargtypes) (println args) (println actargtypes) (util/err (str "somthieng in " location)))
+                     (util/err (str "function invocation invalid; expected " (print-args expargtypes) " found " (print-args actargtypes) " in " location))
                      )
                ]
               res
@@ -434,7 +434,7 @@
                             ntype (m-result (get-type nexpr))
                             res (if (= type ntype)
                                   (util/succ [[a b c d] (conj decls [:init [:ident num] nexpr])])
-                                  (util/err (str "expected " (print-type type) ", found " (print-type ntype) " in " (util/ip-meta decl))))]
+                                  (util/err (str "declaration invalid; expected " (print-type type) ", found " (print-type ntype) " in " (util/ip-meta decl))))]
                            res
                            )
       )))
@@ -469,12 +469,9 @@
                res (check-types (util/succ [:int]) (m-result type) [vars (with-type [:decr [:ident num]] [:int])] location)]
               res)
       :decl (m/domonad util/phase-m
-              [
-               type (m-result (second code))
+              [type (m-result (second code))
                decls (m-result (rest (rest code)))
-               res (reduce (process-decl glob-state type) (m-result [vars [:decl type]]) decls)
-               ;(util/succ [(reduce #(second (add-var %1 %2 type)) vars (map second decls)) (with-type [:decl (map (map-decl glob-state vars location) (rest code))] type)])
-               ]
+               res (reduce (process-decl glob-state type) (m-result [vars [:decl type]]) decls)]
               res
               )
       :ass (m/domonad util/phase-m
@@ -527,22 +524,21 @@
   [glob-state funexpr]
   (match/match funexpr [_ [get-type] [_ name] args block]
     (if (not (or (= get-type :void) (terminated block)))
-      (do (println "err") (util/err (str "return not found in function " name "\n" (util/ip-meta funexpr))))
-      (do (println funexpr) (check-type glob-state funexpr))
+      (util/err (str "return not found in function " name "\n" (util/ip-meta funexpr)))
+      (check-type glob-state funexpr)
       )
     )
   )
 
 (defn check
   [glob-state]
-  (println glob-state)
   (fn [expr]
     (m/domonad util/phase-m
       [state glob-state
        res (match/match (first expr)
              ;:clssdef (analyze-class state (second expr))
              :fndef (analyze-fun state expr))]
-      (do (println "ser") (println res) res))))
+      res)))
 
 
 
@@ -556,18 +552,18 @@
     (m/domonad util/phase-m
       [funs (funsred split-funs (.-funs glob-state))
        new-glob-state (m-result (update glob-state :funs (fn [_] funs)))
-       n-glob-state (do (println "A") (main-check new-glob-state))
-       result (do (println "B") (reduce merge-checks (m-result []) (map (check (m-result n-glob-state)) tree)))
+       n-glob-state (main-check new-glob-state)
+       result (reduce merge-checks (m-result []) (map (check (m-result n-glob-state)) tree))
        ]
       result
       )))
 
-(println (analize (vec [
-                        [:fndef [:int] [:ident "main"] [:args] [:block [:sexp [:eapp [:ident "printInt"] [:elitint 1]]] [:sexp [:eapp [:ident "error"]]] [:condelse [:elittrue] [:block] [:block [:ret [:elitint 0]]]] [:while [:erel [:evar [:ident "a"]] [:eq] [:elitint 3]] [:block [:ret [:elitint 0]]]] [:ret [:elitint 132]]]]
-                        ])))
-;
-(println (analize (vec [
-                        [:fndef [:int] [:ident "main"] [:args] [:block [:incr [:ident "a"]] [:ret [:estring "abc"]]]]])))
+;(println (analize (vec [
+;                        [:fndef [:int] [:ident "main"] [:args] [:block [:sexp [:eapp [:ident "printInt"] [:elitint 1]]] [:sexp [:eapp [:ident "error"]]] [:condelse [:elittrue] [:block] [:block [:ret [:elitint 0]]]] [:while [:erel [:evar [:ident "a"]] [:eq] [:elitint 3]] [:block [:ret [:elitint 0]]]] [:ret [:elitint 132]]]]
+;                        ])))
+;;
+;(println (analize (vec [
+;                        [:fndef [:int] [:ident "main"] [:args] [:block [:incr [:ident "a"]] [:ret [:estring "abc"]]]]])))
 
 ;(analize (vec [
 ;               [:fndef [:int] [:ident "main"] [:args] [:block [:sexp [:expr [:eapp [:ident "printInt"] [:expr [:elitint 1]]]]] [:vret]]]

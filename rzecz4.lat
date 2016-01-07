@@ -8,6 +8,7 @@ int main() {
     return f(d);
     }
   error();
+  return 13;
 }
 
 int f(string a) {
