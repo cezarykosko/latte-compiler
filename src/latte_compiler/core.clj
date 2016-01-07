@@ -28,6 +28,7 @@
                    (compilation/asm-compile tree)
                    )
     [:err msg] (do
+                 (util/println-err "ERROR")
                  (util/println-err msg)
                  (System/exit 1)
                  ))

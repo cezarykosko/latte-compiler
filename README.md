@@ -6,11 +6,20 @@ A Clojure compiler of [Latte programming language](http://www.mimuw.edu.pl/~ben/
 
 ## Usage
 
-FIXME
+After calling `make` the `latc_x86` and `latc` binaries are ready to use. Calling `latc_x86 foo/bar/baz.lat` (or `latc foo/bar/baz.lat`) will, should code compile, create files `baz.s` (x86 assembly code) and `baz` (the executable) in the `foo/bar` directory.
 
-## License
+## 3rd party libraries
 
-Copyright © 2015 FIXME
+Project utilizes Leiningen (script provided in lib/) to manage dependencies (requires Internet connection!
+The dependencies include
+- basic [Clojure](http://clojure.org) package with [core.match](https://github.com/clojure/core.match) for pattern matching and [algo.monads](https://github.com/clojure/algo.monads) for monads support
+- [instaparse](https://github.com/engelberg/instaparse) for ABNF grammar parsing
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+## catalogue structure
+
+- resources - Clojure resources dir, contains the grammar
+- src - sources (`src/latte_compiler` - Clojure sources, `src/utils.c` - helper functions library)
+- lib - directory containing leiningen script
+- project.clj - leiningen config
+
+
