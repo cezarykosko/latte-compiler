@@ -8,10 +8,18 @@ FILEDIR=${FILEPATH%$FILENAME_W_EXTENSION}
 JARPATH=$(dirname $BASH_SOURCE)/target/latte-compiler-0.9-standalone.jar
 LIBPATH=$(dirname $BASH_SOURCE)/target/utils.o
 
+#suppressing 'picked up java opts' message
+_SILENT_JAVA_OPTIONS="$_JAVA_OPTIONS"
+unset _JAVA_OPTIONS
+
 if [ -f $JARPATH ]
 then
-  rm $FILEDIR$FILENAME
-  java -jar $JARPATH $FILEPATH > $FILEDIR$FILENAME.s
+  if [ -f $FILEDIR$FILENAME ]
+  then
+    rm $FILEDIR$FILENAME
+  fi
+
+  java $_SILENT_JAVA_OPTIONS -jar $JARPATH $FILEPATH > $FILEDIR$FILENAME.s
   if [ $? -ne 0 ]
   then
     rm $FILEDIR$FILENAME.s

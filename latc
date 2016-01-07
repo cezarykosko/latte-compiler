@@ -1,3 +1,5 @@
 #!/bin/bash
 
-${dirname $BASH_SOURCE}/latc_x86 $1
+LATC=$(dirname $BASH_SOURCE)/latc_x86
+
+$LATC $1
