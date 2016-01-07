@@ -19,7 +19,7 @@ decl = type <wp> items <ws ';' ws>
 <item> = init | noinit
 noinit = ident
 init = ident <ws '=' ws> expr
-ass = (ident | fident) <ws '=' ws> expr <ws ';' ws>
+ass = ident <ws '=' ws> expr <ws ';' ws>
 incr = ident <ws '++' ws ';' ws>
 decr = ident <ws '--' ws ';' ws>
 ret = <'return' wp> expr <ws ';' ws>
