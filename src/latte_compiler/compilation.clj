@@ -327,7 +327,8 @@
     (println (str "\t" "subl" "\t" (const (* 4 (+ 1 nargs))) ", " esp))
 
     (print-stmt name block 0)
-
+    (if (= type [:void])
+      (print-return))
     ))
 
 
