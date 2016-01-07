@@ -14,7 +14,7 @@
   [name]
   (str "$" name))
 
-(def empty-string "empty-string")
+(def empty-string "emptystring")
 
 (defn get-type
   [obj]
@@ -30,7 +30,7 @@
 
 (defn label-name
   [name lcount]
-  (str "." name "-label-" lcount))
+  (str "." name "label" lcount))
 
 (defn print-label
   [label]
@@ -47,11 +47,11 @@
 
 (defn pop_
   [type dest]
-  (println (str "\t" "pop" (type-suffix type) " " dest)))
+  (println (str "\t" "popl" " " dest)))
 
 (defn push_
   [type src]
-  (println (str "\t" "push" (type-suffix type) " " src)))
+  (println (str "\t" "pushl" " " src)))
 
 (defn move_
   [type src dest]
@@ -59,7 +59,7 @@
 
 (defn string-addr
   [name n]
-  (str name "-string-" n))
+  (str name "string" n))
 
 
 (defn offset-addr
@@ -117,8 +117,9 @@
               )
       :neg (let
              [nlc (print-expr name (second expr) label-count)]
-             (pop_ type eax)
-             (println (str "\tsub" (type-suffix type) "\t" (const 0) ", " eax))
+             (pop_ type edx)
+             (move_ type (const 0) eax)
+             (println (str "\tsub" (type-suffix type) "\t" edx ", " eax))
              (push_ type eax)
              nlc
              )
@@ -154,7 +155,7 @@
                l2 (label-name name (+ nlc2 1))]
               (pop_ type edx)
               (pop_ type eax)
-              (println (str "\tcmp" (type-suffix type) "\t" eax ", " edx))
+              (println (str "\tcmp" "\t" eax ", " edx))
               (println (str "\t" (match/match (third expr)
                                    [:lth] "jl"
                                    [:le] "jle"
@@ -164,6 +165,7 @@
                                    [:ieq] "jne"
                                    ) "\t" l1))
               (push_ type (const 0))
+              (println (str "\tjmp\t" l2))
               (print-label l1)
               (push_ type (const 1))
               (print-label l2)
@@ -209,18 +211,16 @@
               )
       :eapp (let
               [ident (second (second expr))
-               args (reverse (rest (rest expr)))
-               ]
-              (reduce #(do
-                        (push_ nil ebx)
-                        (move_ nil esp ebx)
-                        (print-expr name %2 %1)
-                        (println (str "\tcall " ident))
-                        (move_ nil ebx esp)
-                        (pop_ nil ebx)
-                        (push_ type eax))
-                label-count args
-                )
+               args (reverse (third expr))
+               _ (push_ nil ebx)
+               _ (move_ nil esp ebx)
+               nlc (reduce #(print-expr name %2 %1)
+                     label-count args)]
+              (println (str "\tcall " ident))
+              (move_ nil ebx esp)
+              (pop_ nil ebx)
+              (push_ type eax)
+              nlc
               )
       )))
 
@@ -259,10 +259,10 @@
              )
       :block (reduce #(print-stmt name %2 %1) label-count (rest stmt))
       :incr (let [num (second (second stmt))]
-              (println (str "\tadd" (type-suffix type) (const 1) (offset-addr (* 4 num) ebp)))
+              (println (str "\tadd" (type-suffix type) "\t" (const 1) ", " (offset-addr (* 4 num) ebp)))
               label-count)
       :decr (let [num (second (second stmt))]
-              (println (str "\tadd" (type-suffix type) (const 1) (offset-addr (* 4 num) ebp)))
+              (println (str "\tsub" (type-suffix type) "\t" (const 1) ", " (offset-addr (* 4 num) ebp)))
               label-count)
       :decl (do
               (print-decls name type (rest (rest stmt)) label-count))
@@ -286,7 +286,7 @@
                    l1 (label-name name nlc1)
                    l2 (label-name name (+ nlc1 1))]
                   (pop_ type eax)
-                  (println (str "\ttest\t" eax ", " eax))
+                  (println (str "\tcmp\t" (const 0) ", " eax))
                   (println (str "\tje\t" l1))
                   (let [nlc2 (print-stmt name (third stmt) (+ nlc1 2))]
                     (println (str "\tjmp\t" l2))
@@ -302,9 +302,10 @@
                (print-label l1)
                (let
                  [nlc1 (print-stmt name (third stmt) (+ label-count 2))
-                  nlc2 (do (print-label l2) (print-expr label-name (second stmt) nlc1))]
+                  _ (print-label l2)
+                  nlc2 (print-expr name (second stmt) nlc1)]
                  (pop_ type eax)
-                 (println (str "\ttest\t" eax ", " eax))
+                 (println (str "\tcmp\t" (const 0) ", " eax))
                  (println (str "\tjne\t" l1))
                  nlc2
                  ))

@@ -17,7 +17,7 @@
   [name val])
 
 (def intify
-  #(->> %& str clojure.edn/read-string first (wrap :elitint)))
+  #(->> %& (map str) (apply str) clojure.edn/read-string (wrap :elitint)))
 
 (def stringify
   #(->> %& (map str) (apply str) (wrap :ident)))

@@ -373,7 +373,7 @@
                          (and
                            (= (get-type lexpr) [:string])
                            (= (get-type rexpr) [:string]))
-                         (util/succ [vars2 (with-type [:eapp [:ident "_concatStrings"] lexpr rexpr] [:string])])
+                         (util/succ [vars2 (with-type [:eapp [:ident "_concatStrings"] [lexpr rexpr]] [:string])])
                          (util/err (str "expr invalid; expected int,int or string,string, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location)))
                        )
                  ]
@@ -411,8 +411,8 @@
                            [
                             [tvars decls] vars
                             [ntvars nexpr] (annotate-expr glob-state tvars expr)
-                            [num [a b c d]] (add-var ntvars ident type)
                             ntype (m-result (get-type nexpr))
+                            [num [a b c d]] (add-var ntvars ident type)
                             res (if (= type ntype)
                                   (util/succ [[a b c d] (conj decls [:init [:ident num] nexpr])])
                                   (util/err (str "declaration invalid; expected " (print-type type) ", found " (print-type ntype) " in " (util/ip-meta decl))))]

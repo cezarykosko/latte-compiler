@@ -25,8 +25,9 @@
   (match/match (run filepath)
     [:succ tree] (do
                    (util/println-err "OK")
-                   (println tree)
-                   (compilation/asm-compile tree))
+                   (util/println-err tree)
+                   (compilation/asm-compile tree)
+                   )
     [:err msg] (util/println-err msg))
   )
 

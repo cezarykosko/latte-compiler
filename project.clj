@@ -1,4 +1,4 @@
-(defproject latte-compiler "0.1.0-SNAPSHOT"
+(defproject latte-compiler "0.9"
   :description "A clojure-based compiler of Latte programming language"
   :url "http://github.com/cezarykosko/latte-compiler"
   :main latte-compiler.core

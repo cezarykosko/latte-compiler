@@ -1,0 +1,3 @@
+#!/bin/bash
+
+${dirname $BASH_SOURCE}/latc_x86 $1
