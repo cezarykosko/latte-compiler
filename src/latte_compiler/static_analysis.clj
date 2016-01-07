@@ -74,7 +74,7 @@
      ]
     (if (contains? curr-scope var)
       (util/err (str "var " (print-var var) " already declared in " (util/ip-meta var)))
-      (util/succ [(- num-vars) [(conj (pop map) new-scope) (+ num-vars 1) num-strings strings]]))
+      (util/succ [(- (+ 1 num-vars)) [(conj (pop map) new-scope) (+ num-vars 1) num-strings strings]]))
     )
   )
 
@@ -228,27 +228,6 @@
     [:succ [[:args] vmap]] (rest args))
   )
 
-(defn terminated
-  [code]
-  (match/match (first code)
-    :block (some terminated (rest code))
-    :vret true
-    :ret true
-    :cond (match/match code
-            [_ [:elittrue] b] (recur b)
-            :else false
-            )
-    :condelse (match/match code
-                [_ [:elittrue] b1 _] (recur b1)
-                [_ [:elitfalse] _ b2] (recur b2)
-                :else false)
-    :while (match/match code
-             [_ [:elittrue] _] true
-             [_ [:elitfalse] _] false
-             [_ _ b] (recur b))
-    :else (= code [:sexp [:eapp [:ident "error"]]])
-    ))
-
 (defn print-type
   [type]
   (match/match type
@@ -385,15 +364,17 @@
               (m/domonad util/phase-m
                 [[vars1 lexpr] (annotate-expr glob-state vars (second expr))
                  [vars2 rexpr] (annotate-expr glob-state vars1 (fourth expr))
-                 res (if (or
-                           (and
-                             (= (get-type lexpr) [:int])
-                             (= (get-type rexpr) [:int]))
-                           (and
-                             (= (get-type lexpr) [:string])
-                             (= (get-type rexpr) [:string])))
-                       (util/succ [vars2 (with-type [:eadd lexpr [:plus] rexpr] (get-type lexpr))])
-                       (util/err (str "expr invalid; expected int,int or string,string, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+                 res (if
+                       (and
+                         (= (get-type lexpr) [:int])
+                         (= (get-type rexpr) [:int]))
+                       (util/succ [vars2 (with-type [:eadd lexpr [:plus] rexpr] [:int])])
+                       (if
+                         (and
+                           (= (get-type lexpr) [:string])
+                           (= (get-type rexpr) [:string]))
+                         (util/succ [vars2 (with-type [:eapp [:ident "_concatStrings"] lexpr rexpr] [:string])])
+                         (util/err (str "expr invalid; expected int,int or string,string, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location)))
                        )
                  ]
                 res)
@@ -523,7 +504,7 @@
 (defn analyze-fun
   [glob-state funexpr]
   (match/match funexpr [_ [get-type] [_ name] args block]
-    (if (not (or (= get-type :void) (terminated block)))
+    (if (not (or (= get-type :void) (util/returns? block)))
       (util/err (str "return not found in function " name "\n" (util/ip-meta funexpr)))
       (check-type glob-state funexpr)
       )

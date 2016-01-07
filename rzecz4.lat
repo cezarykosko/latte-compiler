@@ -3,7 +3,7 @@ int main() {
   a++;
   b = b + 3;
   if (a > b) {
-    string c = "ololo", d = "elele";
+    string c = "ololo\t\n", d = "elele";
     d = c + d;
     return f(d);
     }
