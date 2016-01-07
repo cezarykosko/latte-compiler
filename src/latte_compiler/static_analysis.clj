@@ -50,11 +50,11 @@
   [[map num-vars num-strings strings] var type]
   (let
     [curr-scope (peek map)
-     new-scope (conj curr-scope [var [type num-vars]])
+     new-scope (conj curr-scope [var [type (- (+ 1 num-vars))]])
      ]
     (if (contains? curr-scope var)
       (util/err (str "var " (print-var var) " already declared in " (util/ip-meta var)))
-      (util/succ [num-vars [(conj (pop map) new-scope) (+ num-vars 1) num-strings strings]]))
+      (util/succ [(- (+ 1 num-vars)) [(conj (pop map) new-scope) (+ num-vars 1) num-strings strings]]))
     )
   )
 
@@ -70,11 +70,11 @@
   [[map num-vars num-strings strings] var type]
   (let
     [curr-scope (peek map)
-     new-scope (conj curr-scope [var [type (- num-vars)]])
+     new-scope (conj curr-scope [var [type (+ 1 num-vars)]])
      ]
     (if (contains? curr-scope var)
       (util/err (str "var " (print-var var) " already declared in " (util/ip-meta var)))
-      (util/succ [(- (+ 1 num-vars)) [(conj (pop map) new-scope) (+ num-vars 1) num-strings strings]]))
+      (util/succ [(+ 1 num-vars) [(conj (pop map) new-scope) (+ num-vars 1) num-strings strings]]))
     )
   )
 
@@ -426,12 +426,12 @@
     (match/match (first code)
       :block (m/domonad util/phase-m
                [[avars result] (reduce (fn [env code]
-                                 (m/domonad util/phase-m
-                                   [[vars blk] env
-                                    [nvars res] (annotate-code glob-state vars code)]
-                                   [nvars (conj blk res)]
-                                   )
-                                 ) (m-result [(new-scope vars) [:block]]) (rest code))]
+                                         (m/domonad util/phase-m
+                                           [[vars blk] env
+                                            [nvars res] (annotate-code glob-state vars code)]
+                                           [nvars (conj blk res)]
+                                           )
+                                         ) (m-result [(new-scope vars) [:block]]) (rest code))]
                [(rm-scope avars) result]
                )
       :vret (check-types (util/succ [:void]) (lookup-var vars "_return_" location) [vars [:vret]] location)

@@ -5,17 +5,20 @@ int main() {
   a--;
   a++;
   printInt(a);
-  while ( mtzero(a) ) {
-	a++;
-	printInt(a);
-	a--;
-	a++;
+  if (!mtzero(a)) {
+	printString("xD");
   }
   if (a == 0) {
 	printString("spoko");
   } else {
 	printString("wtf");
   }
+  if (a > 0 ) {
+	printString("dodatnio");
+  } else {
+	printString("ujemno");
+  }
+  printInt(f(0));
   printInt(a);
   string b = "cezary", c = " myjegary", d = b + c;
   printString(d);
@@ -32,4 +35,17 @@ boolean mtzero(int a) {
 		printInt(2);
 	}
 	return a;
+}
+
+int f(int a) {
+	a++;
+	return g(a);
+}
+
+int g(int a) {
+	if (a > 3) {
+		return 4;
+	} else {
+		return f(a);
+	}
 }

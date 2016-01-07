@@ -10,7 +10,13 @@ LIBPATH=$(dirname $BASH_SOURCE)/target/utils.o
 
 if [ -f $JARPATH ]
 then
-  java -jar $JARPATH $FILEPATH > $FILEDIR$FILENAME.s && gcc -m32 -o $FILEDIR$FILENAME $LIBPATH $FILEDIR$FILENAME.s
+  java -jar $JARPATH $FILEPATH > $FILEDIR$FILENAME.s
+  if [ $? -ne 0 ]
+  then
+    rm $FILEDIR$FILENAME.s
+  else
+    gcc -m32 -o $FILEDIR$FILENAME $LIBPATH $FILEDIR$FILENAME.s
+  fi
 else
   echo "Executable does not exist. Did you call 'make'?"
 fi

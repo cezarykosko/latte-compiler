@@ -39,10 +39,10 @@
 (defn type-suffix
   [type]
   (match/match type
-    [:int] "l"
-    [:string] "l"
-    [:bool] "b"
-    :else "l"
+    [:int] ""
+    [:string] ""
+    [:bool] ""
+    :else ""
     ))
 
 (defn pop_
@@ -55,7 +55,7 @@
 
 (defn move_
   [type src dest]
-  (println (str "\t" "mov" (type-suffix type) " " src ", " dest)))
+  (println (str "\t" "movl" " " src ", " dest)))
 
 (defn string-addr
   [name n]
@@ -112,7 +112,8 @@
                  label-count)
       :evar (let
               [num (second (second expr))]
-              (push_ type (offset-addr (* 4 num) ebp))
+              (move_ type (offset-addr num ebp) eax)
+              (push_ type eax)
               label-count
               )
       :neg (let
@@ -157,10 +158,10 @@
               (pop_ type eax)
               (println (str "\tcmp" "\t" eax ", " edx))
               (println (str "\t" (match/match (third expr)
-                                   [:lth] "jl"
-                                   [:le] "jle"
-                                   [:gth] "jg"
-                                   [:ge] "jge"
+                                   [:lth] "jg"
+                                   [:le] "jge"
+                                   [:gth] "jl"
+                                   [:ge] "jle"
                                    [:eq] "je"
                                    [:ieq] "jne"
                                    ) "\t" l1))
@@ -237,11 +238,11 @@
             [:init [:ident num] expr]
             (let
               [nlc (print-expr name expr %1)]
-              (pop_ type (offset-addr (* 4 num) ebp))
+              (pop_ type (offset-addr num ebp))
               nlc)
             [:noinit [:ident num]]
             (do
-              (move_ type (default-for-type type) (offset-addr (* 4 num) ebp))
+              (move_ type (default-for-type type) (offset-addr num ebp))
               %1)) label-count decls))
 
 (defn print-stmt
@@ -259,17 +260,17 @@
              )
       :block (reduce #(print-stmt name %2 %1) label-count (rest stmt))
       :incr (let [num (second (second stmt))]
-              (println (str "\tadd" (type-suffix type) "\t" (const 1) ", " (offset-addr (* 4 num) ebp)))
+              (println (str "\tadd" (type-suffix type) "\t" (const 1) ", " (offset-addr num ebp)))
               label-count)
       :decr (let [num (second (second stmt))]
-              (println (str "\tsub" (type-suffix type) "\t" (const 1) ", " (offset-addr (* 4 num) ebp)))
+              (println (str "\tsub" (type-suffix type) "\t" (const 1) ", " (offset-addr num ebp)))
               label-count)
       :decl (do
               (print-decls name type (rest (rest stmt)) label-count))
       :ass (let [ident (second (second stmt))
                  expr (third stmt)
                  nlc (print-expr name expr label-count)]
-             (pop_ type (offset-addr (* 4 ident) ebp))
+             (pop_ type (offset-addr ident ebp))
              nlc
              )
       :cond (let
@@ -286,7 +287,7 @@
                    l1 (label-name name nlc1)
                    l2 (label-name name (+ nlc1 1))]
                   (pop_ type eax)
-                  (println (str "\tcmp\t" (const 0) ", " eax))
+                  (println (str "\ttest\t" eax ", " eax))
                   (println (str "\tje\t" l1))
                   (let [nlc2 (print-stmt name (third stmt) (+ nlc1 2))]
                     (println (str "\tjmp\t" l2))
@@ -328,7 +329,7 @@
     (println (str name ":"))
     (println (str "\t" "pushl" "\t" ebp))
     (println (str "\t" "movl" "\t" esp ", " ebp))
-    (println (str "\t" "subl" "\t" (const (* 4 nargs)) ", " esp))
+    (println (str "\t" "subl" "\t" (const (* 4 (+ 1 nargs))) ", " esp))
 
     (print-stmt name block 0)
 
