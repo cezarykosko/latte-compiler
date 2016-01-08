@@ -22,7 +22,9 @@ then
   java $_SILENT_JAVA_OPTIONS -jar $JARPATH $FILEPATH > $FILEDIR$FILENAME.s
   if [ $? -ne 0 ]
   then
+    RETCODE=$?
     rm $FILEDIR$FILENAME.s
+    exit $RETCODE
   else
     gcc -m32 -o $FILEDIR$FILENAME $LIBPATH $FILEDIR$FILENAME.s
   fi
