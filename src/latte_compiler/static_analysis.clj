@@ -452,8 +452,8 @@
       :decl (m/domonad util/phase-m
               [type (m-result (second code))
                decls (m-result (rest (rest code)))
-               res (reduce (process-decl glob-state type) (m-result [vars [:decl type]]) decls)]
-              res
+               [v e] (reduce (process-decl glob-state type) (m-result [vars [:decl type]]) decls)]
+              [v (with-type e type)]
               )
       :ass (m/domonad util/phase-m
              [name (m-result (second code))
