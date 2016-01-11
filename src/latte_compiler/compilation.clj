@@ -128,23 +128,47 @@
              (push_ type eax)
              nlc
              )
-      :eor (let
-             [nlc1 (print-expr name (second expr) label-count)
-              nlc2 (print-expr name (third expr) nlc1)]
-             (pop_ type edx)
-             (pop_ type eax)
-             (println (str "\tor" (type-suffix type) "\t" edx ", " eax))
-             (push_ type eax)
-             nlc2
-             )
-      :eand (let
-              [nlc1 (print-expr name (second expr) label-count)
-               nlc2 (print-expr name (third expr) nlc1)]
-              (pop_ type edx)
+      :eor  (let
+              [ltrue (label-name name label-count)
+               lend (label-name name (+ label-count 1))
+               nlc (+ label-count 2)
+               nlc1 (print-expr name (second expr) nlc)]
               (pop_ type eax)
-              (println (str "\tand" (type-suffix type) "\t" edx ", " eax))
-              (push_ type eax)
-              nlc2
+              (println (str "\ttest" "\t" eax ", " eax))
+              (println (str "\tjne" "\t" ltrue))
+              (let
+                [nlc2 (print-expr name (third expr) nlc1)]
+                (pop_ type eax)
+                (println (str "\ttest" "\t" eax ", " eax))
+                (println (str "\tjne" "\t" ltrue))
+                (push_ type (const 0))
+                (println (str "\tjmp\t" lend))
+                (print-label ltrue)
+                (push_ type (const 1))
+                (print-label lend)
+                nlc2
+                )
+              )
+      :eand (let
+              [lfalse (label-name name label-count)
+               lend (label-name name (+ label-count 1))
+               nlc (+ label-count 2)
+               nlc1 (print-expr name (second expr) nlc)]
+              (pop_ type eax)
+              (println (str "\ttest" "\t" eax ", " eax))
+              (println (str "\tje" "\t" lfalse))
+              (let
+                [nlc2 (print-expr name (third expr) nlc1)]
+                (pop_ type eax)
+                (println (str "\ttest" "\t" eax ", " eax))
+                (println (str "\tje" "\t" lfalse))
+                (push_ type (const 1))
+                (println (str "\tjmp\t" lend))
+                (print-label lfalse)
+                (push_ type (const 0))
+                (print-label lend)
+                nlc2
+                )
               )
       :erel (let
               [nlc1 (print-expr name (second expr) label-count)
