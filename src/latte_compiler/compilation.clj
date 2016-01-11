@@ -196,7 +196,7 @@
       :emul (if (= (third expr) [:times])
               (let
                 [nlc1 (print-expr name (second expr) label-count)
-                 nlc2 (print-expr name (third expr) nlc1)]
+                 nlc2 (print-expr name (fourth expr) nlc1)]
                 (pop_ type edx)
                 (pop_ type eax)
                 (println (str "\timul" (type-suffix type) "\t" edx ", " eax))
@@ -205,7 +205,7 @@
                 )
               (let
                 [nlc1 (print-expr name (second expr) label-count)
-                 nlc2 (print-expr name (third expr) nlc1)]
+                 nlc2 (print-expr name (fourth expr) nlc1)]
                 (pop_ type ecx)
                 (pop_ type eax)
                 (println "\tcdq")
