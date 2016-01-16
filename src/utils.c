@@ -4,24 +4,19 @@
 
 int readInt() {
 	int a;
-	scanf("%d", &a);
+	scanf("%d\n", &a);
 	return a;
 }
 
+void error() {
+	printf("runtime error\n");
+	exit(EXIT_FAILURE);
+}
+
 char* readString() {
-	char* string;
-	size_t bytes_read;
-	int BUFF_SIZE = 200;
-	
-	//getline(&string, &bytes_read, stdin);
-	string = (char *) malloc(BUFF_SIZE + 1);
-	bytes_read = getline(&string, &BUFF_SIZE, stdin);
-	//scanf("%s\n", string);
-	if (bytes_read == -1) {
-
-	}
-
-	return string;
+	char* string =(char*) malloc (100 * (sizeof(char)));
+        scanf("%s\n", string);
+        return string;
 }
 
 void printInt(int a) {
@@ -29,12 +24,7 @@ void printInt(int a) {
 }
 
 void printString(char* c) {
-	puts(c);
-}
-
-void error() {
-	printf("runtime error\n");
-	exit(EXIT_FAILURE);
+	printf("%s\n", c);
 }
 
 char* _concatStrings(char* str1, char* str2) {
