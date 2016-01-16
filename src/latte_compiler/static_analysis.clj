@@ -247,16 +247,9 @@
 
 (defn check-types
   [exp-type actual-type res location]
-  (m/domonad util/phase-m
-    [exp-type exp-type
-     actual-type actual-type
-     res (if (= actual-type exp-type)
-           (util/succ res)
-           (util/err (str "return type invalid; expected " (print-type exp-type) ", found " (print-type actual-type) " in " location)))
-     ]
-    res)
-
-  )
+  (if (= actual-type exp-type)
+             (util/succ res)
+             (util/err (str "return type invalid; expected " (print-type exp-type) ", found " (print-type actual-type) " in " location))))
 
 (defn with-type
   [obj type]
@@ -319,7 +312,7 @@
                          (= (get-type lexpr) [:bool])
                          (= (get-type rexpr) [:bool]))
                      (util/succ [vars2 (with-type [:eand lexpr rexpr] [:bool])])
-                     (util/err (str "expr invalid; expected bool, bool, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+                     (util/err (str "expr invalid; expected bool,bool, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
                      )
                ]
               res)
@@ -331,7 +324,16 @@
                          (= (get-type lexpr) [:int])
                          (= (get-type rexpr) [:int]))
                      (util/succ [vars2 (with-type [:erel lexpr op rexpr] [:bool])])
-                     (util/err (str "expr invalid; expected int,int, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+                     (if (and
+                           (= (get-type lexpr) [:bool])
+                           (= (get-type rexpr) [:bool])
+                           (or
+                             (= (third expr) [:eq])
+                             (= (third expr) [:ieq])
+                             )
+                           )
+                       (util/succ [vars2 (with-type [:erel lexpr op rexpr] [:bool])])
+                       (util/err (str "expr invalid; expected int,int or bool,bool, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location)))
                      )
                ]
               res)
@@ -434,20 +436,23 @@
                                          ) (m-result [(new-scope vars) [:block]]) (rest code))]
                [(rm-scope avars) result]
                )
-      :vret (check-types (util/succ [:void]) (lookup-var vars "_return_" location) [vars [:vret]] location)
+      :vret (m/domonad util/phase-m
+              [[type _] (lookup-var vars "_return_" location)
+               res (check-types [:void] type [vars [:vret]] location)]
+              res)
       :ret (m/domonad util/phase-m
              [[nvars expr] (annotate-expr glob-state vars (second code))
               [type _] (lookup-var nvars "_return_" location)
-              res (check-types (m-result type) (m-result (get-type expr)) [nvars (with-type [:ret expr] (get-type expr))] location)
+              res (check-types type (get-type expr) [nvars (with-type [:ret expr] (get-type expr))] location)
               ]
              res)
       :incr (m/domonad util/phase-m
               [[type num] (lookup-var vars (second code) location)
-               res (check-types (util/succ [:int]) (m-result type) [vars (with-type [:incr [:ident num]] [:int])] location)]
+               res (check-types [:int] type [vars (with-type [:incr [:ident num]] [:int])] location)]
               res)
       :decr (m/domonad util/phase-m
               [[type num] (lookup-var vars (second code) location)
-               res (check-types (util/succ [:int]) (m-result type) [vars (with-type [:decr [:ident num]] [:int])] location)]
+               res (check-types [:int] type [vars (with-type [:decr [:ident num]] [:int])] location)]
               res)
       :decl (m/domonad util/phase-m
               [type (m-result (second code))
@@ -459,26 +464,26 @@
              [name (m-result (second code))
               [nvars expr] (annotate-expr glob-state vars (third code))
               [type num] (lookup-var vars name location)
-              res (check-types (m-result type) (m-result (get-type expr)) [nvars (with-type [:ass [:ident num] expr] (get-type expr))] location)]
+              res (check-types type (get-type expr) [nvars (with-type [:ass [:ident num] expr] (get-type expr))] location)]
              res)
       :cond (m/domonad util/phase-m
               [
                [vars1 expr] (annotate-expr glob-state vars (second code))
                [vars2 nblock] (annotate-code glob-state vars1 (third code))
-               res (check-types (m-result [:bool]) (m-result (get-type expr)) [vars2 [:cond expr nblock]] location)]
+               res (check-types [:bool] (get-type expr) [vars2 [:cond expr nblock]] location)]
               res)
       :condelse (m/domonad util/phase-m
                   [
                    [vars1 expr] (annotate-expr glob-state vars (second code))
                    [vars2 nblock1] (annotate-code glob-state vars1 (third code))
                    [vars3 nblock2] (annotate-code glob-state vars2 (fourth code))
-                   res (check-types (m-result [:bool]) (m-result (get-type expr)) [vars3 [:condelse expr nblock1 nblock2]] location)]
+                   res (check-types [:bool] (get-type expr) [vars3 [:condelse expr nblock1 nblock2]] location)]
                   res)
       :while (m/domonad util/phase-m
                [
                 [vars1 expr] (annotate-expr glob-state vars (second code))
                 [vars2 nblock] (annotate-code glob-state vars1 (third code))
-                res (check-types (m-result [:bool]) (m-result (get-type expr)) [vars2 [:while expr nblock]] location)]
+                res (check-types [:bool] (get-type expr) [vars2 [:while expr nblock]] location)]
                res
                )
       :sexp (m/domonad util/phase-m
