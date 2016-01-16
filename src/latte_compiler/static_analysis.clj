@@ -438,7 +438,7 @@
                )
       :vret (m/domonad util/phase-m
               [[type _] (lookup-var vars "_return_" location)
-               res (check-types [:void] type [vars [:vret]] location)]
+               res (check-types type [:void] [vars [:vret]] location)]
               res)
       :ret (m/domonad util/phase-m
              [[nvars expr] (annotate-expr glob-state vars (second code))
