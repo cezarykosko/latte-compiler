@@ -92,6 +92,16 @@
     )
   )
 
+(defn lookup-fun
+  [glob-state ident location]
+  (let
+    [funs (.-funs glob-state)
+     rec (find funs ident)]
+    (if (nil? rec)
+      (util/err (str "function " (print-var ident) " not found in: " location))
+      (util/succ (second rec))
+      )))
+
 (defn new-scope
   [[map num-vars num-strings strings]]
   [(conj map (hash-map)) num-vars num-strings strings])
@@ -405,7 +415,7 @@
               [ident (m-result (second expr))
                [nvar args] (reduce (fn [buff tmp] (m/domonad util/phase-m [[tmvar tmargs] buff [ntmvar nexpr] (annotate-expr glob-state tmvar tmp)] [ntmvar (conj tmargs nexpr)])) (m-result [vars []]) (rest (rest expr)))
                actargtypes (m-result (vec (map get-type args)))
-               fundef (m-result (second (find (.-funs glob-state) ident)))
+               fundef (lookup-fun glob-state ident location)
                expargtypes (m-result (.-inTypes fundef))
                outtype (m-result (.-outType fundef))
                res (if (= expargtypes actargtypes)
