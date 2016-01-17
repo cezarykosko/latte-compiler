@@ -33,3 +33,7 @@ char* _concatStrings(char* str1, char* str2) {
 	strcat(nstring, str2);
 	return nstring;
 }
+
+int _eqStrings(char* str1, char* str2) {
+	return (strcmp(str1, str2) == 0);
+}

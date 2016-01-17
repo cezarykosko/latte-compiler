@@ -248,8 +248,8 @@
 (defn check-types
   [exp-type actual-type res location]
   (if (= actual-type exp-type)
-             (util/succ res)
-             (util/err (str "return type invalid; expected " (print-type exp-type) ", found " (print-type actual-type) " in " location))))
+    (util/succ res)
+    (util/err (str "return type invalid; expected " (print-type exp-type) ", found " (print-type actual-type) " in " location))))
 
 (defn with-type
   [obj type]
@@ -324,16 +324,36 @@
                          (= (get-type lexpr) [:int])
                          (= (get-type rexpr) [:int]))
                      (util/succ [vars2 (with-type [:erel lexpr op rexpr] [:bool])])
-                     (if (and
-                           (= (get-type lexpr) [:bool])
-                           (= (get-type rexpr) [:bool])
-                           (or
-                             (= (third expr) [:eq])
-                             (= (third expr) [:ieq])
+                     (if (or
+                           (= (third expr) [:eq])
+                           (= (third expr) [:ieq]))
+
+                       (if (and
+                             (= (get-type lexpr) [:bool])
+                             (= (get-type rexpr) [:bool])
+                             (or
+                               (= (third expr) [:eq])
+                               (= (third expr) [:ieq])
+                               )
                              )
-                           )
-                       (util/succ [vars2 (with-type [:erel lexpr op rexpr] [:bool])])
-                       (util/err (str "expr invalid; expected int,int or bool,bool, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location)))
+                         (util/succ [vars2 (with-type [:erel lexpr op rexpr] [:bool])])
+                         (if (and
+                               (= (get-type lexpr) [:string])
+                               (= (get-type rexpr) [:string])
+                               (or
+                                 (= (third expr) [:eq])
+                                 (= (third expr) [:ieq])
+                                 ))
+                           (let
+                             [cmp [:eapp [:ident "_eqStrings"] [lexpr rexpr]]
+                              expr (if (= (third expr) [:eq])
+                                     cmp
+                                     [:not cmp])]
+                             (util/succ [vars2 (with-type expr [:bool])]))
+                           (util/err (str "expr invalid; expected int,int or bool,bool or string,string, "
+                                       "found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))))
+                       (util/err (str "expr invalid; expected int,int, "
+                                   "found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location)))
                      )
                ]
               res)
@@ -443,6 +463,7 @@
       :ret (m/domonad util/phase-m
              [[nvars expr] (annotate-expr glob-state vars (second code))
               [type _] (lookup-var nvars "_return_" location)
+              tmp (if (= type [:void]) (util/err (str "returning void function not allowed in " (util/ip-meta location))) (util/succ ""))
               res (check-types type (get-type expr) [nvars (with-type [:ret expr] (get-type expr))] location)
               ]
              res)
@@ -490,7 +511,7 @@
               [[vars1 expr] (annotate-expr glob-state vars (second code))]
               [vars1 [:sexp expr]]
               )
-      :else (util/succ [vars code]))))
+      :empty (util/succ [vars code]))))
 
 (defn check-type
   [glob-state funexpr]

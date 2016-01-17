@@ -333,6 +333,7 @@
               [nlc (print-expr name (second stmt) label-count)]
               (pop_ type eax)
               nlc)
+      :empty label-count
       ))
   )
 

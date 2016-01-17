@@ -1,33 +1,33 @@
-<program> = topdef*
-<topdef> =  fndef | <ws> (*| clssdef*)
+<program> = <ws> topdef*
+<topdef> = <ws> fndef <ws> (*| clssdef*)
 fndef = vtype <wp> ident <ws ob ws> args <ws cb ws> block
 clssdef = noextclssdef | extclssdef
-noextclssdef = <'class' wp> ident <ws '{' ws> clssdecls <ws '}' ws>
-extclssdef = <'class' wp> ident <wp 'extends' wp> tident <ws '{' ws> clssdecls <ws '}' ws>
+noextclssdef = <'class' wp> ident <ws '{' ws> clssdecls <ws '}'>
+extclssdef = <'class' wp> ident <wp 'extends' wp> tident <ws '{' ws> clssdecls <'}'>
 clssdecls = (clssdecl <ws> )*
 <clssdecl> = decl | fndef
 arg = type <wp> ident
 args = epsilon | arg (<ws ',' ws> arg)*
 
-block = <ws '{' ws> stmts <ws '}' ws>
+block = <'{' ws> stmts <'}'>
 <stmts> = (stmt <ws>)*
-<stmt> = vret / ret / empty / (bstmt | decl | ass | incr | decr | cond | condelse | while | sexp)
-<empty> = <ws ';' ws>
+<stmt> = vret / ret / empty / cond / condelse / while / (bstmt | decl | ass | incr | decr | sexp)
+empty = <';'>
 <bstmt> = block
-decl = type <wp> items <ws ';' ws>
+decl = type <wp> items <ws ';'>
 <items> = item (<ws ',' ws> item)*
 <item> = init | noinit
 noinit = ident
 init = ident <ws '=' ws> expr
-ass = ident <ws '=' ws> expr <ws ';' ws>
-incr = ident <ws '++' ws ';' ws>
-decr = ident <ws '--' ws ';' ws>
-ret = <'return' wp> expr <ws ';' ws>
-vret = <'return' ws ';' ws> | <'return;'>
+ass = ident <ws '=' ws> expr <ws ';'>
+incr = ident <ws '++' ws ';'>
+decr = ident <ws '--' ws ';'>
+ret = <'return' wp> expr <ws ';'>
+vret = <'return' ws ';'>
 cond = <'if' ws '(' ws> expr <ws ')' ws> stmt
 condelse = <'if' ws '(' ws> expr <ws ')' ws> stmt <ws 'else' ws> stmt
 while = <'while' ws '(' ws> expr <ws ')' ws> stmt
-sexp = expr <ws ';' ws>
+sexp = expr <ws ';'>
 
 <vtype> = type | void
 <type> = int / string / bool (*/ tident*)
@@ -40,7 +40,7 @@ void = <'void'>
 
 <expr> = exp0
 <exprs> = (expr (<ws ',' ws> expr)*)?
-<bexpr> = <ws ob ws> expr <ws cb ws>
+<bexpr> = <ob ws> expr <ws cb>
 <exp0> = eor | exp1 | bexpr
 eor = exp1 <ws '||' ws> expr
 <exp1> = eand | exp2 | bexpr
@@ -52,15 +52,15 @@ eadd = exp3 <ws> addop <ws> exp4
 <exp4> = emul | exp5 | bexpr
 emul = exp4 <ws> mulop <ws> exp5
 <exp5> = neg | not | exp6 | bexpr
-neg = <ws '-' ws> exp6
-not = <ws '!' ws> exp6
+neg = <'-' ws> exp6
+not = <'!' ws> exp6
 <exp6> = evar | elitint | elittrue | elitfalse | eapp | estring | bexpr (*| eclassinit | eclassfield | etypednull | ethis*)
 evar = ident
-elitint = digit+
+elitint = '-'? digit+
 elittrue = <'true'>
 elitfalse = <'false'>
 etypednull = <ob ws> tident <cb ws 'null'>
-eapp = ident <ws ob ws> exprs <ws cb ws>
+eapp = ident <ws ob ws> exprs <ws cb>
 ethis = <'this'>
 <eclassfield> = fident | fapp
 fapp = ident <ws '.' ws> eapp
@@ -73,23 +73,25 @@ ident = letter (letter | digit | '_' | "'")*
 <stringlit> = <'"'> #'([^"\\]|(\\["\\nt]))*' <'"'>
 
 <addop> = plus | minus
-plus = <ws '+' ws>
-minus = <ws '-' ws>
+plus = <'+'>
+minus = <'-'>
 <mulop> = times | div | mod
-times = <ws '*' ws>
-div = <ws '/' ws>
-mod = <ws '%' ws>
+times = <'*'>
+div = <'/'>
+mod = <'%'>
 <relop> = lth | le | gth | ge | eq | ieq
-lth = <ws '<' ws>
-le = <ws '<=' ws>
-gth = <ws '>' ws>
-ge = <ws '>=' ws>
-eq = <ws '==' ws>
-ieq = <ws '!=' ws>
+lth = <'<'>
+le = <'<='>
+gth = <'>'>
+ge = <'>='>
+eq = <'=='>
+ieq = <'!='>
 
 
-w = #'[ \t\n]' | ('#' | '//' ) #'[^\n]*\n' | '/*' #'[^(\*/)]*' '*/'
 wp = w+
 ws = w*
+w = #'\s+' | comment
+comment = '/*' inside-comment* '*/' | ('#' | '//') #'.*' '\n'
+inside-comment = !( '*/' | '/*') #'(.|\s)' | comment
 ob = '('
 cb = ')'
