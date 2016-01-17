@@ -1,7 +1,8 @@
 (ns latte-compiler.static-analysis
   (:require [clojure.core.match :as match]
             [clojure.algo.monads :as m]
-            [latte-compiler.util :as util]))
+            [latte-compiler.util :as util]
+            ))
 
 (defrecord ClassDef [extends fields funs])
 (defrecord FunDef [name outType inTypes])
@@ -275,6 +276,60 @@
   (with-meta obj (assoc (meta obj) "_vars" vars))
   )
 
+(defn- is-str
+  [x]
+  (= (get-type x) [:string]))
+
+(defn- is-bool
+  [x]
+  (= (get-type x) [:bool]))
+
+(defn- is-int
+  [x]
+  (= (get-type x) [:int]))
+
+(defn annotate-erel
+  [vars lexpr rexpr relop location]
+  (match/match [lexpr rexpr relop]
+    [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:eq]]
+    (util/succ [vars (with-type [:eapp [:ident "_eqStrings"] [lexpr rexpr]] [:bool])])
+
+    [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:ieq]]
+      (util/succ [vars (with-type [:not [:eapp [:ident "_eqStrings"] [lexpr rexpr]]] [:bool])])
+
+    [(lexpr :guard #(is-bool %)) (rexpr :guard #(is-bool %)) (:or [:eq] [:ieq])]
+    (util/succ [vars (with-type [:erel lexpr relop rexpr] [:bool])])
+
+    [(lexpr :guard #(is-int %)) (rexpr :guard #(is-int %)) relop]
+    (util/succ [vars (with-type [:erel lexpr relop rexpr] [:bool])])
+
+    [ _ _  (:or [:eq] [:ieq])]
+    (util/err (str "expr invalid; expected int,int or bool,bool or string,string, "
+                "found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+
+    :else
+    (util/err (str "expr invalid; expected int,int, "
+                "found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+    ))
+
+(defn annotate-eadd
+  [vars lexpr rexpr relop location]
+  (match/match [lexpr rexpr relop]
+    [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:plus]]
+    (util/succ [vars (with-type [:eapp [:ident "_concatStrings"] [lexpr rexpr]] [:string])])
+
+    [(lexpr :guard #(is-int %)) (rexpr :guard #(is-int %)) relop]
+    (util/succ [vars (with-type [:eadd lexpr relop rexpr] [:int])])
+
+    [ _ _  [:plus]]
+    (util/err (str "expr invalid; expected int,int or string,string, "
+                "found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+
+    :else
+    (util/err (str "expr invalid; expected int,int, "
+                "found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location)
+    )))
+
 (defn annotate-expr
   [glob-state vars expr]
   (let [location (util/ip-meta expr)]
@@ -332,41 +387,7 @@
               [[vars1 lexpr] (annotate-expr glob-state vars (second expr))
                [vars2 rexpr] (annotate-expr glob-state vars1 (fourth expr))
                op (m-result (third expr))
-               res (if (and
-                         (= (get-type lexpr) [:int])
-                         (= (get-type rexpr) [:int]))
-                     (util/succ [vars2 (with-type [:erel lexpr op rexpr] [:bool])])
-                     (if (or
-                           (= (third expr) [:eq])
-                           (= (third expr) [:ieq]))
-
-                       (if (and
-                             (= (get-type lexpr) [:bool])
-                             (= (get-type rexpr) [:bool])
-                             (or
-                               (= (third expr) [:eq])
-                               (= (third expr) [:ieq])
-                               )
-                             )
-                         (util/succ [vars2 (with-type [:erel lexpr op rexpr] [:bool])])
-                         (if (and
-                               (= (get-type lexpr) [:string])
-                               (= (get-type rexpr) [:string])
-                               (or
-                                 (= (third expr) [:eq])
-                                 (= (third expr) [:ieq])
-                                 ))
-                           (let
-                             [cmp [:eapp [:ident "_eqStrings"] [lexpr rexpr]]
-                              expr (if (= (third expr) [:eq])
-                                     cmp
-                                     [:not cmp])]
-                             (util/succ [vars2 (with-type expr [:bool])]))
-                           (util/err (str "expr invalid; expected int,int or bool,bool or string,string, "
-                                       "found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))))
-                       (util/err (str "expr invalid; expected int,int, "
-                                   "found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location)))
-                     )
+               res (annotate-erel vars2 lexpr rexpr op location)
                ]
               res)
       :emul (m/domonad util/phase-m
@@ -381,38 +402,13 @@
                      )
                ]
               res)
-      :eadd (match/match (third expr)
-              [:minus]
-              (m/domonad util/phase-m
-                [[vars1 lexpr] (annotate-expr glob-state vars (second expr))
-                 [vars2 rexpr] (annotate-expr glob-state vars1 (fourth expr))
-                 res (if (and
-                           (= (get-type lexpr) [:int])
-                           (= (get-type rexpr) [:int]))
-                       (util/succ [vars2 (with-type [:eadd lexpr [:minus] rexpr] [:int])])
-                       (util/err (str "expr invalid; expected int,int, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
-                       )
-                 ]
-                res)
-              [:plus]
-              (m/domonad util/phase-m
-                [[vars1 lexpr] (annotate-expr glob-state vars (second expr))
-                 [vars2 rexpr] (annotate-expr glob-state vars1 (fourth expr))
-                 res (if
-                       (and
-                         (= (get-type lexpr) [:int])
-                         (= (get-type rexpr) [:int]))
-                       (util/succ [vars2 (with-type [:eadd lexpr [:plus] rexpr] [:int])])
-                       (if
-                         (and
-                           (= (get-type lexpr) [:string])
-                           (= (get-type rexpr) [:string]))
-                         (util/succ [vars2 (with-type [:eapp [:ident "_concatStrings"] [lexpr rexpr]] [:string])])
-                         (util/err (str "expr invalid; expected int,int or string,string, found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location)))
-                       )
-                 ]
-                res)
-              )
+      :eadd  (m/domonad util/phase-m
+               [[vars1 lexpr] (annotate-expr glob-state vars (second expr))
+                [vars2 rexpr] (annotate-expr glob-state vars1 (fourth expr))
+                op (m-result (third expr))
+                res (annotate-eadd vars2 lexpr rexpr op location)
+                ]
+               res)
       :eapp (m/domonad util/phase-m
               [ident (m-result (second expr))
                [nvar args] (reduce (fn [buff tmp] (m/domonad util/phase-m [[tmvar tmargs] buff [ntmvar nexpr] (annotate-expr glob-state tmvar tmp)] [ntmvar (conj tmargs nexpr)])) (m-result [vars []]) (rest (rest expr)))
