@@ -403,7 +403,7 @@
 (defn- function_
   [fun]
   (let
-    [[_ nargs nstrings strings] (second (find (meta fun) "_vars"))
+    [[_ [nargs _] nstrings strings] (second (find (meta fun) "_vars"))
      [:fndef type [_ name] args block] fun
      ]
     (strings_ name strings nstrings)

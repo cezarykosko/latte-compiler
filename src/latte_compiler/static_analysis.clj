@@ -45,37 +45,37 @@
 
 (defn- vars-map
   []
-  [(list (hash-map)) 0 0 (hash-map)])
+  [(list (hash-map)) [0 0] 0 (hash-map)])
 
 (defn- add-var
-  [[map num-vars num-strings strings] var type]
+  [[map [num-vars num-args] num-strings strings] var type]
   (let
     [curr-scope (peek map)
      new-scope (conj curr-scope [var [type (- (+ 1 num-vars))]])
      ]
     (if (contains? curr-scope var)
       (util/err (str "var " (print-var var) " already declared in " (util/ip-meta var)))
-      (util/succ [(- (+ 1 num-vars)) [(conj (pop map) new-scope) (+ num-vars 1) num-strings strings]]))
+      (util/succ [(- (+ 1 num-vars)) [(conj (pop map) new-scope) [(+ num-vars 1) num-args] num-strings strings]]))
     )
   )
 
 (defn- add-string
-  [[map num-vars num-strings strings] string]
+  [[map [num-vars num-args] num-strings strings] string]
   (if (contains? strings string)
-    [(second (find strings string)) [map num-vars num-strings strings]]
-    [(+ num-strings 1) [map num-vars (+ num-strings 1) (assoc (assoc strings string (+ num-strings 1)) (+ num-strings 1) string)]]
+    [(second (find strings string)) [map [num-vars num-args] num-strings strings]]
+    [(+ num-strings 1) [map [num-vars num-args] (+ num-strings 1) (assoc (assoc strings string (+ num-strings 1)) (+ num-strings 1) string)]]
     )
   )
 
 (defn- add-arg-var
-  [[map num-vars num-strings strings] var type]
+  [[map [num-vars num-args] num-strings strings] var type]
   (let
     [curr-scope (peek map)
-     new-scope (conj curr-scope [var [type (+ 1 num-vars)]])
+     new-scope (conj curr-scope [var [type (+ 1 num-args)]])
      ]
     (if (contains? curr-scope var)
       (util/err (str "var " (print-var var) " already declared in " (util/ip-meta var)))
-      (util/succ [(+ 1 num-vars) [(conj (pop map) new-scope) (+ num-vars 1) num-strings strings]]))
+      (util/succ [(+ 1 num-vars) [(conj (pop map) new-scope) [num-vars (+ num-args 1)] num-strings strings]]))
     )
   )
 
@@ -132,7 +132,7 @@
     )
   )
 
-(defn- class-dep
+(defn class-dep
   [clsdef]
   (let [type (first clsdef)]
     (if (= type :noextclssdef)
@@ -141,12 +141,12 @@
       )
     ))
 
-(defn- class-name
+(defn class-name
   [clsdef]
   (second clsdef))
 
 
-(defn- map-type
+(defn map-type
   [type]
   (match/match (first type)
     :ident type
@@ -154,12 +154,12 @@
     :else type)
   )
 
-(defn- map-arg
+(defn map-arg
   [arg]
   (map-type (second arg))
   )
 
-(defn- map-fun
+(defn map-fun
   [fun]
   (match/match fun
     [_ type name argz _]
@@ -276,15 +276,15 @@
   (with-meta obj (assoc (meta obj) "_vars" vars))
   )
 
-(defn-- is-str
+(defn- is-str
   [x]
   (= (get-type x) [:string]))
 
-(defn-- is-bool
+(defn- is-bool
   [x]
   (= (get-type x) [:bool]))
 
-(defn-- is-int
+(defn- is-int
   [x]
   (= (get-type x) [:int]))
 
@@ -526,7 +526,7 @@
   (match/match funexpr [fun get-type [ident name] args block]
     (m/domonad util/phase-m
       [
-       [_ vars1] (add-var (vars-map) "_return_" get-type)
+       [_ vars1] (add-arg (vars-map) [:arg get-type "_return_"])
        [nargs vars] (add-args vars1 args)
        [nvars nblock] (annotate-code glob-state vars block)
        ]
