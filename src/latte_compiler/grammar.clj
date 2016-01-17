@@ -8,10 +8,8 @@
 
 (def FILE
   (clojure.java.io/resource FILENAME))
-
 (def latte_parser
   (insta/parser FILE :start :program))
-
 (defn wrap
   [name val]
   [name val])
@@ -21,7 +19,6 @@
 
 (def stringify
   #(->> %& (map str) (apply str) (wrap :ident)))
-
 (def latte
   #(->> (latte_parser %)
     (insta/add-line-and-column-info-to-metadata %)
@@ -30,13 +27,10 @@
        :ident   stringify
        :elitint intify
        })))
-
 (defn parse
   [code]
   (let [parse (latte code)]
     (if (insta/failure? parse)
       (util/err (insta/get-failure parse))
       (util/succ parse)
-      )
-    )
-  )
+      )))
