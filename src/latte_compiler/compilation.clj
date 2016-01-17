@@ -32,30 +32,93 @@
   [name lcount]
   (str "." name "label" lcount))
 
-(defn- print-label
+(defn- label_
   [label]
   (println (str label ":")))
 
-(defn- type-suffix
-  [type]
-  (match/match type
-    [:int] ""
-    [:string] ""
-    [:bool] ""
-    :else ""
-    ))
-
 (defn- pop_
-  [type dest]
+  [dest]
   (println (str "\t" "popl" " " dest)))
 
 (defn- push_
-  [type src]
+  [src]
   (println (str "\t" "pushl" " " src)))
 
 (defn- move_
-  [type src dest]
+  [src dest]
   (println (str "\t" "movl" " " src ", " dest)))
+
+(defn- call_
+  [fun]
+  (println (str "\t" "call" " " fun)))
+
+(defn- add_
+  [arg1 arg2]
+  (println (str "\t" "addl" " " arg1 ", " arg2)))
+
+(defn- sub_
+  [arg1 arg2]
+  (println (str "\t" "subl" " " arg1 ", " arg2)))
+
+(defn- imul_
+  [arg1 arg2]
+  (println (str "\t" "imull" " " arg1 ", " arg2)))
+
+(defn- idiv_
+  [arg]
+  (println (str "\t" "idivl" " " arg)))
+
+(defn- cdq_
+  []
+  (println (str "\t" "cdq")))
+
+(defn- xor_
+  [arg1 arg2]
+  (println (str "\t" "xorl" " " arg1 ", " arg2)))
+
+(defn- test_
+  [arg1 arg2]
+  (println (str "\t" "test" " " arg1 ", " arg2)))
+
+(defn- cmp_
+  [arg1 arg2]
+  (println (str "\t" "cmp" " " arg1 ", " arg2)))
+
+(defn- jmp_
+  [label]
+  (println (str "\t" "jmp" " " label)))
+
+(defn- je_
+  [label]
+  (println (str "\t" "je" " " label)))
+
+(defn- jne_
+  [label]
+  (println (str "\t" "jne" " " label)))
+
+(defn- jg_
+  [label]
+  (println (str "\t" "jg" " " label)))
+
+(defn- jge_
+  [label]
+  (println (str "\t" "jge" " " label)))
+
+(defn- jl_
+  [label]
+  (println (str "\t" "jl" " " label)))
+
+(defn- jle_
+  [label]
+  (println (str "\t" "jle" " " label)))
+
+(defn- leave_
+  []
+  (println (str "\t" "leave")))
+
+(defn- ret_
+  []
+  (println (str "\t" "ret")))
 
 (defn- string-addr
   [name n]
@@ -74,7 +137,7 @@
 (def ebp "%ebp")
 (def esp "%esp")
 
-(defn- print-empty-string
+(defn- empty-string_
   []
   (println (str empty-string ":"))
   (println (str "\t" ".string \"" "\""))
@@ -82,7 +145,7 @@
   (println)
   )
 
-(defn- print-strings
+(defn- strings_
   [name strings nstrings]
   (doseq [n (range 1 (+ nstrings 1))]
     (println (str (string-addr name n) ":"))
@@ -91,274 +154,274 @@
     (println)
     ))
 
-(defn- print-expr
+(defn- expr_
   [name expr label-count]
-  (let [type (get-type expr)]
-    (match/match (first expr)
-      :elittrue (do
-                  (push_ type (const 1))
-                  label-count)
-      :elitfalse (do
-                   (push_ type (const 0))
-                   label-count)
-      :elitint (do
-                 (push_ type (const (second expr)))
+  (match/match (first expr)
+    :elittrue (do
+                (push_ (const 1))
+                label-count)
+    :elitfalse (do
+                 (push_ (const 0))
                  label-count)
-      :estring (do
-                 (push_ type (const (string-addr name (second expr))))
-                 label-count)
-      :evar (let
-              [num (second (second expr))]
-              (move_ type (offset-addr num ebp) eax)
-              (push_ type eax)
-              label-count
-              )
-      :neg (let
-             [nlc (print-expr name (second expr) label-count)]
-             (pop_ type edx)
-             (move_ type (const 0) eax)
-             (println (str "\tsub" (type-suffix type) "\t" edx ", " eax))
-             (push_ type eax)
-             nlc
+    :elitint (do
+               (push_ (const (second expr)))
+               label-count)
+    :estring (do
+               (push_ (const (string-addr name (second expr))))
+               label-count)
+    :evar (let
+            [num (second (second expr))]
+            (move_ (offset-addr num ebp) eax)
+            (push_ eax)
+            label-count
+            )
+    :neg (let
+           [nlc (expr_ name (second expr) label-count)]
+           (pop_ edx)
+           (move_ (const 0) eax)
+           (sub_ edx eax)
+           (push_ eax)
+           nlc
+           )
+    :not (let
+           [nlc (expr_ name (second expr) label-count)]
+           (pop_ eax)
+           (xor_ (const 1) eax)
+           (push_ eax)
+           nlc
+           )
+    :eor (let
+           [ltrue (label-name name label-count)
+            lend (label-name name (+ label-count 1))
+            nlc (+ label-count 2)
+            nlc1 (expr_ name (second expr) nlc)]
+           (pop_ eax)
+           (test_ eax eax)
+           (jne_ ltrue)
+           (let
+             [nlc2 (expr_ name (third expr) nlc1)]
+             (pop_ eax)
+             (test_ eax eax)
+             (jne_ ltrue)
+             (push_ (const 0))
+             (jmp_ lend)
+             (label_ ltrue)
+             (push_ (const 1))
+             (label_ lend)
+             nlc2
              )
-      :not (let
-             [nlc (print-expr name (second expr) label-count)]
-             (pop_ type eax)
-             (println (str "\txor" (type-suffix type) "\t" (const 1) ", " eax))
-             (push_ type eax)
-             nlc
-             )
-      :eor  (let
-              [ltrue (label-name name label-count)
-               lend (label-name name (+ label-count 1))
-               nlc (+ label-count 2)
-               nlc1 (print-expr name (second expr) nlc)]
-              (pop_ type eax)
-              (println (str "\ttest" "\t" eax ", " eax))
-              (println (str "\tjne" "\t" ltrue))
-              (let
-                [nlc2 (print-expr name (third expr) nlc1)]
-                (pop_ type eax)
-                (println (str "\ttest" "\t" eax ", " eax))
-                (println (str "\tjne" "\t" ltrue))
-                (push_ type (const 0))
-                (println (str "\tjmp\t" lend))
-                (print-label ltrue)
-                (push_ type (const 1))
-                (print-label lend)
-                nlc2
-                )
-              )
-      :eand (let
-              [lfalse (label-name name label-count)
-               lend (label-name name (+ label-count 1))
-               nlc (+ label-count 2)
-               nlc1 (print-expr name (second expr) nlc)]
-              (pop_ type eax)
-              (println (str "\ttest" "\t" eax ", " eax))
-              (println (str "\tje" "\t" lfalse))
-              (let
-                [nlc2 (print-expr name (third expr) nlc1)]
-                (pop_ type eax)
-                (println (str "\ttest" "\t" eax ", " eax))
-                (println (str "\tje" "\t" lfalse))
-                (push_ type (const 1))
-                (println (str "\tjmp\t" lend))
-                (print-label lfalse)
-                (push_ type (const 0))
-                (print-label lend)
-                nlc2
-                )
-              )
-      :erel (let
-              [nlc1 (print-expr name (second expr) label-count)
-               nlc2 (print-expr name (fourth expr) nlc1)
-               l1 (label-name name nlc2)
-               l2 (label-name name (+ nlc2 1))]
-              (pop_ type edx)
-              (pop_ type eax)
-              (println (str "\tcmp" "\t" eax ", " edx))
-              (println (str "\t" (match/match (third expr)
-                                   [:lth] "jg"
-                                   [:le] "jge"
-                                   [:gth] "jl"
-                                   [:ge] "jle"
-                                   [:eq] "je"
-                                   [:ieq] "jne"
-                                   ) "\t" l1))
-              (push_ type (const 0))
-              (println (str "\tjmp\t" l2))
-              (print-label l1)
-              (push_ type (const 1))
-              (print-label l2)
-              (+ nlc2 2)
-              )
-      :emul (if (= (third expr) [:times])
-              (let
-                [nlc1 (print-expr name (second expr) label-count)
-                 nlc2 (print-expr name (fourth expr) nlc1)]
-                (pop_ type edx)
-                (pop_ type eax)
-                (println (str "\timul" (type-suffix type) "\t" edx ", " eax))
-                (push_ type eax)
-                nlc2
-                )
-              (let
-                [nlc1 (print-expr name (second expr) label-count)
-                 nlc2 (print-expr name (fourth expr) nlc1)]
-                (pop_ type ecx)
-                (pop_ type eax)
-                (println "\tcdq")
-                (println (str "\tidiv" (type-suffix type) "\t" ecx))
-                (if (= (third expr) [:div])
-                  (push_ type eax)
-                  (push_ type edx)
-                  )
-                nlc2))
-      :eadd (let
-              [lexpr (second expr)
-               rexpr (fourth expr)
-               op (if (= (third expr) [:plus])
-                    "add"
-                    "sub"
-                    )
-               nlc1 (print-expr name lexpr label-count)
-               nlc2 (print-expr name rexpr nlc1)
-               ]
-              (pop_ type edx)
-              (pop_ type eax)
-              (println (str "\t" op (type-suffix type) "\t" edx ", " eax))
-              (push_ type eax)
+           )
+    :eand (let
+            [lfalse (label-name name label-count)
+             lend (label-name name (+ label-count 1))
+             nlc (+ label-count 2)
+             nlc1 (expr_ name (second expr) nlc)]
+            (pop_ eax)
+            (test_ eax eax)
+            (je_ lfalse)
+            (let
+              [nlc2 (expr_ name (third expr) nlc1)]
+              (pop_ eax)
+              (test_ eax eax)
+              (je_ lfalse)
+              (push_ (const 1))
+              (jmp_ lend)
+              (label_ lfalse)
+              (push_ (const 0))
+              (label_ lend)
               nlc2
               )
-      :eapp (let
-              [ident (second (second expr))
-               args (reverse (third expr))
-               nargs (count args)
-               nlc (reduce #(print-expr name %2 %1)
-                     label-count args)]
-              (println (str "\tcall " ident))
-              (println (str "\taddl\t" (const (* 4 nargs)) ", " esp))
-              (push_ type eax)
-              nlc
+            )
+    :erel (let
+            [nlc1 (expr_ name (second expr) label-count)
+             nlc2 (expr_ name (fourth expr) nlc1)
+             l1 (label-name name nlc2)
+             l2 (label-name name (+ nlc2 1))
+             op (match/match (third expr)
+                  [:lth] jg_
+                  [:le] jge_
+                  [:gth] jl_
+                  [:ge] jle_
+                  [:eq] je_
+                  [:ieq] jne_)
+             ]
+            (pop_ edx)
+            (pop_ eax)
+            (cmp_ eax edx)
+            (op l1)
+            (push_ (const 0))
+            (jmp_ l2)
+            (label_ l1)
+            (push_ (const 1))
+            (label_ l2)
+            (+ nlc2 2)
+            )
+    :emul (if (= (third expr) [:times])
+            (let
+              [nlc1 (expr_ name (second expr) label-count)
+               nlc2 (expr_ name (fourth expr) nlc1)]
+              (pop_ edx)
+              (pop_ eax)
+              (imul_ edx eax)
+              (push_ eax)
+              nlc2
               )
-      )))
+            (let
+              [nlc1 (expr_ name (second expr) label-count)
+               nlc2 (expr_ name (fourth expr) nlc1)]
+              (pop_ ecx)
+              (pop_ eax)
+              (cdq_)
+              (idiv_ ecx)
+              (if (= (third expr) [:div])
+                (push_ eax)
+                (push_ edx)
+                )
+              nlc2))
+    :eadd (let
+            [lexpr (second expr)
+             rexpr (fourth expr)
+             op (if (= (third expr) [:plus])
+                  add_
+                  sub_
+                  )
+             nlc1 (expr_ name lexpr label-count)
+             nlc2 (expr_ name rexpr nlc1)
+             ]
+            (pop_ edx)
+            (pop_ eax)
+            (op edx eax)
+            (push_ eax)
+            nlc2
+            )
+    :eapp (let
+            [ident (second (second expr))
+             args (reverse (third expr))
+             nargs (count args)
+             nlc (reduce #(expr_ name %2 %1)
+                   label-count args)]
+            (call_ ident)
+            (add_ (const (* 4 nargs)) esp)
+            (push_ eax)
+            nlc
+            )
+    ))
 
-(defn- print-return
+(defn- return_
   []
-  (println (str "\t" "leave"))
-  (println (str "\t" "ret"))
+  (leave_)
+  (ret_)
   (println)
   )
 
-(defn- print-decls
+(defn- decls_
   [name type decls label-count]
   (reduce #(match/match %2
             [:init [:ident num] expr]
             (let
-              [nlc (print-expr name expr %1)]
-              (pop_ type (offset-addr num ebp))
+              [nlc (expr_ name expr %1)]
+              (pop_ (offset-addr num ebp))
               nlc)
             [:noinit [:ident num]]
             (do
-              (move_ type (default-for-type type) (offset-addr num ebp))
+              (move_ (default-for-type type) (offset-addr num ebp))
               %1)) label-count decls))
 
-(defn- print-stmt
+(defn- stmt_
   [name stmt label-count]
   (let [type (get-type stmt)]
     (match/match (first stmt)
       :vret (do
-              (print-return)
+              (return_)
               label-count)
       :ret (let
-             [nlc (print-expr name (second stmt) label-count)]
-             (pop_ (get-type stmt) eax)
-             (print-return)
+             [nlc (expr_ name (second stmt) label-count)]
+             (pop_ eax)
+             (return_)
              nlc
              )
-      :block (reduce #(print-stmt name %2 %1) label-count (rest stmt))
+      :block (reduce #(stmt_ name %2 %1) label-count (rest stmt))
       :incr (let [num (second (second stmt))]
-              (println (str "\tadd" (type-suffix type) "\t" (const 1) ", " (offset-addr num ebp)))
+              (add_ (const 1) (offset-addr num ebp))
               label-count)
       :decr (let [num (second (second stmt))]
-              (println (str "\tsub" (type-suffix type) "\t" (const 1) ", " (offset-addr num ebp)))
+              (sub_ (const 1) (offset-addr num ebp))
               label-count)
       :decl (do
-              (print-decls name type (rest (rest stmt)) label-count))
+              (decls_ name type (rest (rest stmt)) label-count))
       :ass (let [ident (second (second stmt))
                  expr (third stmt)
-                 nlc (print-expr name expr label-count)]
-             (pop_ type (offset-addr ident ebp))
+                 nlc (expr_ name expr label-count)]
+             (pop_ (offset-addr ident ebp))
              nlc
              )
       :cond (let
-              [nlc1 (print-expr name (second stmt) label-count)
+              [nlc1 (expr_ name (second stmt) label-count)
                l1 (label-name name nlc1)]
-              (pop_ type eax)
-              (println (str "\ttest\t" eax ", " eax))
-              (println (str "\tje\t" l1))
-              (let [nlc2 (print-stmt name (third stmt) (+ nlc1 1))]
-                (print-label l1)
+              (pop_ eax)
+              (test_ eax eax)
+              (je_ l1)
+              (let [nlc2 (stmt_ name (third stmt) (+ nlc1 1))]
+                (label_ l1)
                 nlc2))
       :condelse (let
-                  [nlc1 (print-expr name (second stmt) label-count)
+                  [nlc1 (expr_ name (second stmt) label-count)
                    l1 (label-name name nlc1)
                    l2 (label-name name (+ nlc1 1))]
-                  (pop_ type eax)
-                  (println (str "\ttest\t" eax ", " eax))
-                  (println (str "\tje\t" l1))
-                  (let [nlc2 (print-stmt name (third stmt) (+ nlc1 2))]
-                    (println (str "\tjmp\t" l2))
-                    (print-label l1)
-                    (let [nlc3 (print-stmt name (fourth stmt) nlc2)]
-                      (print-label l2)
+                  (pop_ eax)
+                  (test_ eax eax)
+                  (je_ l1)
+                  (let [nlc2 (stmt_ name (third stmt) (+ nlc1 2))]
+                    (jmp_ l2)
+                    (label_ l1)
+                    (let [nlc3 (stmt_ name (fourth stmt) nlc2)]
+                      (label_ l2)
                       nlc3
                       )))
       :while (let
                [l1 (label-name name label-count)
                 l2 (label-name name (+ label-count 1))]
-               (println (str "\tjmp\t" l2))
-               (print-label l1)
+               (jmp_ l2)
+               (label_ l1)
                (let
-                 [nlc1 (print-stmt name (third stmt) (+ label-count 2))
-                  _ (print-label l2)
-                  nlc2 (print-expr name (second stmt) nlc1)]
-                 (pop_ type eax)
-                 (println (str "\tcmp\t" (const 0) ", " eax))
-                 (println (str "\tjne\t" l1))
+                 [nlc1 (stmt_ name (third stmt) (+ label-count 2))
+                  _ (label_ l2)
+                  nlc2 (expr_ name (second stmt) nlc1)]
+                 (pop_ eax)
+                 (test_ eax eax)
+                 (jne_ l1)
                  nlc2
                  ))
       :sexp (let
-              [nlc (print-expr name (second stmt) label-count)]
-              (pop_ type eax)
+              [nlc (expr_ name (second stmt) label-count)]
+              (pop_ eax)
               nlc)
       :empty label-count
       ))
   )
 
-(defn- print-function
+(defn- function_
   [fun]
   (let
     [[_ nargs nstrings strings] (second (find (meta fun) "_vars"))
      [:fndef type [_ name] args block] fun
      ]
-    (print-strings name strings nstrings)
+    (strings_ name strings nstrings)
     (println (str "\t" ".globl" "\t" name))
     (println (str "\t" ".type" "\t" name ", @function"))
     (println (str name ":"))
-    (println (str "\t" "pushl" "\t" ebp))
-    (println (str "\t" "movl" "\t" esp ", " ebp))
-    (println (str "\t" "subl" "\t" (const (* 4 (+ 1 nargs))) ", " esp))
+    (push_ ebp)
+    (move_ esp ebp)
+    (sub_ (const (* 4 (+ 1 nargs))) esp)
 
-    (print-stmt name block 0)
+    (stmt_ name block 0)
     (if (= type [:void])
-      (print-return))
+      (return_))
     ))
 
 
 (defn asm-compile
   [tree]
-  (print-empty-string)
-  (doseq [fn tree] (print-function fn))
+  (empty-string_)
+  (doseq [fn tree] (function_ fn))
   )

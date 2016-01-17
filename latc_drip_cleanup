@@ -1,0 +1,5 @@
+#!/bin/bash
+
+LATC_DRIPPATH=$(dirname $BASH_SOURCE)/lib/drip
+
+$LATC_DRIPPATH kill

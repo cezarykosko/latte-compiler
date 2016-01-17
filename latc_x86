@@ -14,6 +14,8 @@ LIBPATH=$(dirname $BASH_SOURCE)/target/utils.o
 _SILENT_JAVA_OPTIONS="$_JAVA_OPTIONS"
 unset _JAVA_OPTIONS
 
+LATC_DRIP_ENABLED=${LATC_DRIP_ENABLED:-0}
+
 if [ -f $JARPATH ]
 then
   if [ -f $FILEDIR$FILENAME ]
@@ -21,7 +23,14 @@ then
     rm $FILEDIR$FILENAME
   fi
 
-  java $_SILENT_JAVA_OPTIONS -jar $JARPATH $FILEPATH > $FILEDIR$FILENAME.s
+  if [ $LATC_DRIP_ENABLED -ne 1 ]
+  then
+    ENG=java
+  else
+    ENG=$DRIPPATH
+  fi
+
+  $ENG $_SILENT_JAVA_OPTIONS -jar $JARPATH $FILEPATH > $FILEDIR$FILENAME.s
   RETCODE=$?
   if [ $RETCODE -ne 0 ]
   then

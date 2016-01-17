@@ -1,0 +1,5 @@
+#!/bin/bash
+
+LATC=$(dirname $BASH_SOURCE)/latc_x86
+
+LATC_DRIP_ENABLED=1 $LATC $1
