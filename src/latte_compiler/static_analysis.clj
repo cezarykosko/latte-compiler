@@ -279,7 +279,9 @@
   [glob-state vars expr]
   (let [location (util/ip-meta expr)]
     (match/match (first expr)
-      :elitint (util/succ [vars (with-type expr [:int])])
+      :elitint (if (or (> (second expr) 2147483647) (< (second expr) -2147483648))
+                 (util/err (str "int literal not in the [-2147483648, 2147483647] range in " location))
+                 (util/succ [vars (with-type expr [:int])]))
       :elittrue (util/succ [vars (with-type expr [:bool])])
       :elitfalse (util/succ [vars (with-type expr [:bool])])
       :estring (let
@@ -500,21 +502,21 @@
       :cond (m/domonad util/phase-m
               [
                [vars1 expr] (annotate-expr glob-state vars (second code))
-               [vars2 nblock] (annotate-code glob-state vars1 (third code))
-               res (check-types [:bool] (get-type expr) [vars2 [:cond expr nblock]] location)]
+               [vars2 nblock] (annotate-code glob-state (new-scope vars1) (third code))
+               res (check-types [:bool] (get-type expr) [(rm-scope vars2) [:cond expr nblock]] location)]
               res)
       :condelse (m/domonad util/phase-m
                   [
                    [vars1 expr] (annotate-expr glob-state vars (second code))
-                   [vars2 nblock1] (annotate-code glob-state vars1 (third code))
-                   [vars3 nblock2] (annotate-code glob-state vars2 (fourth code))
-                   res (check-types [:bool] (get-type expr) [vars3 [:condelse expr nblock1 nblock2]] location)]
+                   [vars2 nblock1] (annotate-code glob-state (new-scope vars1) (third code))
+                   [vars3 nblock2] (annotate-code glob-state (new-scope (rm-scope vars2)) (fourth code))
+                   res (check-types [:bool] (get-type expr) [(rm-scope vars3) [:condelse expr nblock1 nblock2]] location)]
                   res)
       :while (m/domonad util/phase-m
                [
                 [vars1 expr] (annotate-expr glob-state vars (second code))
-                [vars2 nblock] (annotate-code glob-state vars1 (third code))
-                res (check-types [:bool] (get-type expr) [vars2 [:while expr nblock]] location)]
+                [vars2 nblock] (annotate-code glob-state (new-scope vars1) (third code))
+                res (check-types [:bool] (get-type expr) [(rm-scope vars2) [:while expr nblock]] location)]
                res
                )
       :sexp (m/domonad util/phase-m
