@@ -2,20 +2,25 @@
 #include<stdlib.h>
 #include<string.h>
 
-int readInt() {
-	int a;
-	scanf("%d\n", &a);
-	return a;
-}
-
 void error() {
 	printf("runtime error\n");
 	exit(EXIT_FAILURE);
 }
 
+int readInt() {
+	int a;
+	int res = scanf("%d\n", &a);
+	if (res == 0 || res == EOF) {
+		error();
+	}
+	return a;
+}
+
 char* readString() {
-	char* string =(char*) malloc (100 * (sizeof(char)));
-        scanf("%s\n", string);
+	char* string = NULL;
+	size_t size;
+	getline(&string, &size, stdin);
+	string[strlen(string) - 1] = 0;
         return string;
 }
 
