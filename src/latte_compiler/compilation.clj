@@ -2,25 +2,25 @@
   (:require [latte-compiler.util :as util]
             [clojure.core.match :as match]))
 
-(defn third
+(defn- third
   [coll]
   (first (next (next coll))))
 
-(defn fourth
+(defn- fourth
   [coll]
   (first (next (next (next coll)))))
 
-(defn const
+(defn- const
   [name]
   (str "$" name))
 
 (def empty-string "emptystring")
 
-(defn get-type
+(defn- get-type
   [obj]
   (second (find (meta obj) "_type")))
 
-(defn default-for-type
+(defn- default-for-type
   [type]
   (match/match type
     [:int] (const 0)
@@ -28,15 +28,15 @@
     [:bool] (const 0)
     ))
 
-(defn label-name
+(defn- label-name
   [name lcount]
   (str "." name "label" lcount))
 
-(defn print-label
+(defn- print-label
   [label]
   (println (str label ":")))
 
-(defn type-suffix
+(defn- type-suffix
   [type]
   (match/match type
     [:int] ""
@@ -45,24 +45,24 @@
     :else ""
     ))
 
-(defn pop_
+(defn- pop_
   [type dest]
   (println (str "\t" "popl" " " dest)))
 
-(defn push_
+(defn- push_
   [type src]
   (println (str "\t" "pushl" " " src)))
 
-(defn move_
+(defn- move_
   [type src dest]
   (println (str "\t" "movl" " " src ", " dest)))
 
-(defn string-addr
+(defn- string-addr
   [name n]
   (str name "string" n))
 
 
-(defn offset-addr
+(defn- offset-addr
   [offset addr]
   (if (= offset 0)
     (str "(" addr ")")
@@ -74,7 +74,7 @@
 (def ebp "%ebp")
 (def esp "%esp")
 
-(defn print-empty-string
+(defn- print-empty-string
   []
   (println (str empty-string ":"))
   (println (str "\t" ".string \"" "\""))
@@ -82,7 +82,7 @@
   (println)
   )
 
-(defn print-strings
+(defn- print-strings
   [name strings nstrings]
   (doseq [n (range 1 (+ nstrings 1))]
     (println (str (string-addr name n) ":"))
@@ -91,7 +91,7 @@
     (println)
     ))
 
-(defn print-expr
+(defn- print-expr
   [name expr label-count]
   (let [type (get-type expr)]
     (match/match (first expr)
@@ -244,14 +244,14 @@
               )
       )))
 
-(defn print-return
+(defn- print-return
   []
   (println (str "\t" "leave"))
   (println (str "\t" "ret"))
   (println)
   )
 
-(defn print-decls
+(defn- print-decls
   [name type decls label-count]
   (reduce #(match/match %2
             [:init [:ident num] expr]
@@ -264,7 +264,7 @@
               (move_ type (default-for-type type) (offset-addr num ebp))
               %1)) label-count decls))
 
-(defn print-stmt
+(defn- print-stmt
   [name stmt label-count]
   (let [type (get-type stmt)]
     (match/match (first stmt)
@@ -337,7 +337,7 @@
       ))
   )
 
-(defn print-function
+(defn- print-function
   [fun]
   (let
     [[_ nargs nstrings strings] (second (find (meta fun) "_vars"))

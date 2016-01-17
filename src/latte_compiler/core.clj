@@ -10,7 +10,7 @@
   (:gen-class)
   )
 
-(defn run
+(defn- run
   [filepath]
 
   (m/domonad util/phase-m

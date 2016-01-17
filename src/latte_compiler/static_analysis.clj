@@ -9,15 +9,15 @@
 (defrecord FieldDef [name type])
 (defrecord GlobState [classes funs std-types])
 
-(defn third
+(defn- third
   [coll]
   (first (next (next coll))))
 
-(defn fourth
+(defn- fourth
   [coll]
   (first (next (next (next coll)))))
 
-(defn merge-checks
+(defn- merge-checks
   [acc cur]
   (m/domonad util/phase-m
     [acc acc
@@ -38,16 +38,16 @@
     (hash-set :void :int :string :boolean)
     ))
 
-(defn print-var
+(defn- print-var
   [var]
   (match/match var
     [:ident name] (str name)))
 
-(defn vars-map
+(defn- vars-map
   []
   [(list (hash-map)) 0 0 (hash-map)])
 
-(defn add-var
+(defn- add-var
   [[map num-vars num-strings strings] var type]
   (let
     [curr-scope (peek map)
@@ -59,7 +59,7 @@
     )
   )
 
-(defn add-string
+(defn- add-string
   [[map num-vars num-strings strings] string]
   (if (contains? strings string)
     [(second (find strings string)) [map num-vars num-strings strings]]
@@ -67,7 +67,7 @@
     )
   )
 
-(defn add-arg-var
+(defn- add-arg-var
   [[map num-vars num-strings strings] var type]
   (let
     [curr-scope (peek map)
@@ -79,7 +79,7 @@
     )
   )
 
-(defn lookup-var
+(defn- lookup-var
   [[map a b c] var location]
   (if (empty? map)
     (util/err (str "var " (print-var var) " not found in: " location))
@@ -93,7 +93,7 @@
     )
   )
 
-(defn lookup-fun
+(defn- lookup-fun
   [glob-state ident location]
   (let
     [funs (.-funs glob-state)
@@ -103,19 +103,19 @@
       (util/succ (second rec))
       )))
 
-(defn new-scope
+(defn- new-scope
   [[map num-vars num-strings strings]]
   [(conj map (hash-map)) num-vars num-strings strings])
 
-(defn rm-scope
+(defn- rm-scope
   [[map num-vars num-strings strings]]
   [(pop map) num-vars num-strings strings])
 
-(defn makeclassdefmap
+(defn- makeclassdefmap
   [glob-state startmap name classdefs]
   glob-state)
 
-(defn makeclassdef
+(defn- makeclassdef
   [glob-state clssexpr extends]
   (match/match [extends (nth clssexpr 2)]
     [true [:tident [:ident ident]]]
@@ -132,7 +132,7 @@
     )
   )
 
-(defn class-dep
+(defn- class-dep
   [clsdef]
   (let [type (first clsdef)]
     (if (= type :noextclssdef)
@@ -141,12 +141,12 @@
       )
     ))
 
-(defn class-name
+(defn- class-name
   [clsdef]
   (second clsdef))
 
 
-(defn map-type
+(defn- map-type
   [type]
   (match/match (first type)
     :ident type
@@ -154,12 +154,12 @@
     :else type)
   )
 
-(defn map-arg
+(defn- map-arg
   [arg]
   (map-type (second arg))
   )
 
-(defn map-fun
+(defn- map-fun
   [fun]
   (match/match fun
     [_ type name argz _]
@@ -170,7 +170,7 @@
 (require '[clojure.algo.monads :as m]
   '[latte-compiler.util :as util])
 
-(defn conj-hlp
+(defn- conj-hlp
   [coll elem]
   (match/match elem
     [name fndef] (if (contains? coll name)
@@ -179,7 +179,7 @@
                    ))
   )
 
-(defn m-conj
+(defn- m-conj
   [mcoll melem]
   (m/domonad util/phase-m
     [
@@ -188,7 +188,7 @@
      res (conj-hlp coll elem)]
     res))
 
-(defn funsred
+(defn- funsred
   ([funs coll]
    (m/domonad util/phase-m
      [mfuns (m-result funs)
@@ -196,7 +196,7 @@
       res (reduce m-conj (m-result coll) (map util/succ nfuns))]
      res)))
 
-(defn bucketize
+(defn- bucketize
   [buffer expr]
   (if (= :clssdef (first expr))
     [(conj (first buffer) (second expr)) (second buffer)]
@@ -204,7 +204,7 @@
     )
   )
 
-(defn main-check
+(defn- main-check
   [glob-state]
   (if (=
         (second (find (.-funs glob-state) [:ident "main"]))
@@ -214,13 +214,13 @@
     )
   )
 
-(defn analyze-class
+(defn- analyze-class
   [glob-state clssexpr]
   (util/succ (match/match (first clssexpr)
                :noextclssdef (makeclassdef glob-state clssexpr false)
                :extclssdef (makeclassdef glob-state clssexpr true))))
 
-(defn add-arg
+(defn- add-arg
   [vmap arg]
   (match/match arg [:arg type ident]
     (m/domonad util/phase-m
@@ -230,7 +230,7 @@
     )
   )
 
-(defn add-args
+(defn- add-args
   [vmap args]
   (reduce (fn [buf arg]
             (m/domonad util/phase-m
@@ -239,7 +239,7 @@
     [:succ [[:args] vmap]] (rest args))
   )
 
-(defn print-type
+(defn- print-type
   [type]
   (match/match type
     [:void] "void"
@@ -248,7 +248,7 @@
     [:bool] "bool"
     [:tident [:ident a]] a))
 
-(defn print-args
+(defn- print-args
   [args]
   (if (empty? args)
     "none"
@@ -256,39 +256,39 @@
     )
   )
 
-(defn check-types
+(defn- check-types
   [exp-type actual-type res location]
   (if (= actual-type exp-type)
     (util/succ res)
     (util/err (str "return type invalid; expected " (print-type exp-type) ", found " (print-type actual-type) " in " location))))
 
-(defn with-type
+(defn- with-type
   [obj type]
   (with-meta obj (assoc (meta obj) "_type" type))
   )
 
-(defn get-type
+(defn- get-type
   [obj]
   (second (find (meta obj) "_type")))
 
-(defn with-vars
+(defn- with-vars
   [obj vars]
   (with-meta obj (assoc (meta obj) "_vars" vars))
   )
 
-(defn- is-str
+(defn-- is-str
   [x]
   (= (get-type x) [:string]))
 
-(defn- is-bool
+(defn-- is-bool
   [x]
   (= (get-type x) [:bool]))
 
-(defn- is-int
+(defn-- is-int
   [x]
   (= (get-type x) [:int]))
 
-(defn annotate-erel
+(defn- annotate-erel
   [vars lexpr rexpr relop location]
   (match/match [lexpr rexpr relop]
     [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:eq]]
@@ -312,7 +312,7 @@
                 "found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
     ))
 
-(defn annotate-eadd
+(defn- annotate-eadd
   [vars lexpr rexpr relop location]
   (match/match [lexpr rexpr relop]
     [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:plus]]
@@ -330,7 +330,7 @@
                 "found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location)
     )))
 
-(defn annotate-expr
+(defn- annotate-expr
   [glob-state vars expr]
   (let [location (util/ip-meta expr)]
     (match/match (first expr)
@@ -426,7 +426,7 @@
       ))
   )
 
-(defn process-decl
+(defn- process-decl
   [glob-state type]
   (fn [vars decl]
     (match/match decl
@@ -450,7 +450,7 @@
                            )
       )))
 
-(defn annotate-code
+(defn- annotate-code
   [glob-state vars code]
   (let [location (util/ip-meta code)]
     (match/match (first code)
@@ -521,7 +521,7 @@
               )
       :empty (util/succ [vars code]))))
 
-(defn check-type
+(defn- check-type
   [glob-state funexpr]
   (match/match funexpr [fun get-type [ident name] args block]
     (m/domonad util/phase-m
@@ -535,7 +535,7 @@
         nvars)
       )))
 
-(defn analyze-fun
+(defn- analyze-fun
   [glob-state funexpr]
   (match/match funexpr [_ [get-type] [_ name] args block]
     (if (not (or (= get-type :void) (util/returns? block)))
@@ -545,7 +545,7 @@
     )
   )
 
-(defn check
+(defn- check
   [glob-state]
   (fn [expr]
     (m/domonad util/phase-m

@@ -10,7 +10,7 @@
   (clojure.java.io/resource FILENAME))
 (def latte_parser
   (insta/parser FILE :start :program))
-(defn wrap
+(defn- wrap
   [name val]
   [name val])
 
@@ -27,6 +27,7 @@
        :ident   stringify
        :elitint intify
        })))
+
 (defn parse
   [code]
   (let [parse (latte code)]
