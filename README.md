@@ -25,6 +25,6 @@ The dependencies include
 
 ## Slow startup issue
 
-Since Clojure core namespaces load on every execution, the JVM startup is really sluggish. Hence the `latc_drip` and `latc_drip_cleanup` binaries. They utilize [![drip](https://github.com/ninjudd/drip)], a small lib keeping the JVM running for another run, so that every second compilation does not have to load all namespaces (the JVM instance is killed after 30 minutes if not used). Note that every recompilation, kill and such may corrupt the classpath loader, and upon such the `latc_drip_cleanup` script should be called to fix that.
+Since Clojure core namespaces load on every execution, the JVM startup is really sluggish. Hence the `latc_drip` and `latc_drip_cleanup` binaries. They utilize [drip](https://github.com/ninjudd/drip), a small lib keeping the JVM running for another run, so that every second compilation does not have to load all namespaces (the JVM instance is killed after 30 minutes if not used). Note that every recompilation, kill and such may corrupt the classpath loader, and upon such the `latc_drip_cleanup` script should be called to fix that.
 `latc_drip` is to be used instead of `latc` or `latc` should be called with `LATC_DRIP_ENABLED` var set to `1`.
 Note that while that approach is generally faster (up to 2x) for a number of consecutive runs, it may cause problems should the classpath be corrupted and as such, it may be worth to re-run compilation after cleanup or on regular JVM if compilation stalls/weird errors are thrown.
