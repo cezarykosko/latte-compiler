@@ -404,7 +404,7 @@
   [fun]
   (let
     [[_ [nargs _] nstrings strings] (second (find (meta fun) "_vars"))
-     [:fndef type [_ name] args block] fun
+     [_ type [_ name] args block] fun
      ]
     (strings_ name strings nstrings)
     (println (str "\t" ".globl" "\t" name))
