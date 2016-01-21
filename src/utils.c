@@ -21,7 +21,7 @@ char* readString() {
 	size_t size;
 	getline(&string, &size, stdin);
 	string[strlen(string) - 1] = 0;
-        return string;
+	return string;
 }
 
 void printInt(int a) {
