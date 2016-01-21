@@ -8,13 +8,20 @@
     [latte-compiler.compilation :as compilation]
     )
   (:gen-class)
-  )
+  (:import (java.io FileNotFoundException)))
+
+(defn- read-file
+  [filepath]
+  (try
+    (util/succ (slurp filepath))
+    (catch FileNotFoundException _ (util/err (str "file " filepath " not found")))
+    ))
 
 (defn- run
   [filepath]
 
   (m/domonad util/phase-m
-    [code (m-result (slurp filepath))
+    [code (read-file filepath)
      tree (grammar/parse code)
      aug-tree (analysis/analize tree)
      ]
@@ -33,4 +40,3 @@
                  (System/exit 1)
                  ))
   )
-
