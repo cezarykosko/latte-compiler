@@ -1,6 +1,6 @@
 (ns latte-compiler.compilation
   (:require [latte-compiler.util :as util]
-            [clojure.core.match :as match]))
+            [clojure.core.match :refer [match]]))
 
 (defn- third
   [coll]
@@ -22,7 +22,7 @@
 
 (defn- default-for-type
   [type]
-  (match/match type
+  (match type
     [:int] (const 0)
     [:string] (const empty-string)
     [:bool] (const 0)
@@ -154,9 +154,24 @@
     (println)
     ))
 
+(defn- evar_
+  [expr label-count]
+  (match expr
+    [:ident num]
+    (do
+      (move_ (offset-addr num ebp) eax)
+      (push_ eax)
+      label-count)
+    [:vident [:ident num]]
+    (do
+      (move_ (offset-addr num ebp) eax)
+      (push_ eax)
+      label-count)
+    ))
+
 (defn- expr_
   [name expr label-count]
-  (match/match (first expr)
+  (match (first expr)
     :elittrue (do
                 (push_ (const 1))
                 label-count)
@@ -169,12 +184,7 @@
     :estring (do
                (push_ (const (string-addr name (second expr))))
                label-count)
-    :evar (let
-            [num (second (second expr))]
-            (move_ (offset-addr num ebp) eax)
-            (push_ eax)
-            label-count
-            )
+    :evar (evar_ (second expr) label-count)
     :neg (let
            [nlc (expr_ name (second expr) label-count)]
            (pop_ edx)
@@ -237,7 +247,7 @@
              nlc2 (expr_ name (fourth expr) nlc1)
              l1 (label-name name nlc2)
              l2 (label-name name (+ nlc2 1))
-             op (match/match (third expr)
+             op (match (third expr)
                   [:lth] jg_
                   [:le] jge_
                   [:gth] jl_
@@ -316,7 +326,7 @@
 
 (defn- decls_
   [name type decls label-count]
-  (reduce #(match/match %2
+  (reduce #(match %2
             [:init [:ident num] expr]
             (let
               [nlc (expr_ name expr %1)]
@@ -327,10 +337,16 @@
               (move_ (default-for-type type) (offset-addr num ebp))
               %1)) label-count decls))
 
+(defn- get-varnum
+  [var]
+  (match var
+    [:ident num] num
+    [:vident [:ident num]] num))
+
 (defn- stmt_
   [name stmt label-count]
   (let [type (get-type stmt)]
-    (match/match (first stmt)
+    (match (first stmt)
       :vret (do
               (return_)
               label-count)
@@ -341,15 +357,15 @@
              nlc
              )
       :block (reduce #(stmt_ name %2 %1) label-count (rest stmt))
-      :incr (let [num (second (second stmt))]
+      :incr (let [num (get-varnum (second stmt))]
               (add_ (const 1) (offset-addr num ebp))
               label-count)
-      :decr (let [num (second (second stmt))]
+      :decr (let [num (get-varnum (second stmt))]
               (sub_ (const 1) (offset-addr num ebp))
               label-count)
       :decl (do
               (decls_ name type (rest (rest stmt)) label-count))
-      :ass (let [ident (second (second stmt))
+      :ass (let [ident (get-varnum (second stmt))
                  expr (third stmt)
                  nlc (expr_ name expr label-count)]
              (pop_ (offset-addr ident ebp))

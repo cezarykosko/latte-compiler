@@ -11,7 +11,7 @@ args = epsilon | arg (<ws ',' ws> arg)*
 
 block = <'{' ws> stmts <'}'>
 <stmts> = (stmt <ws>)*
-<stmt> = vret / ret / empty / cond / condelse / while / (bstmt | decl | ass | incr | decr | sexp)
+<stmt> = vret / ret / empty / cond / condelse / while / for / bstmt / decl / ass / incr / decr / sexp
 empty = <';'>
 <bstmt> = block
 decl = type <wp> items <ws ';'>
@@ -19,20 +19,25 @@ decl = type <wp> items <ws ';'>
 <item> = init | noinit
 noinit = ident
 init = ident <ws '=' ws> expr
-ass = ident <ws '=' ws> expr <ws ';'>
-incr = ident <ws '++' ws ';'>
-decr = ident <ws '--' ws ';'>
+ass = eident <ws '=' ws> expr <ws ';'>
+incr = eident <ws '++' ws ';'>
+decr = eident <ws '--' ws ';'>
 ret = <'return' wp> expr <ws ';'>
 vret = <'return' ws ';'>
 cond = <'if' ws '(' ws> expr <ws ')' ws> stmt
 condelse = <'if' ws '(' ws> expr <ws ')' ws> stmt <ws 'else' ws> stmt
 while = <'while' ws '(' ws> expr <ws ')' ws> stmt
+for = <'for' ws '(' ws> type <wp> ident <ws ':' ws> eident <ws ')' ws> stmt
 sexp = expr <ws ';'>
 
 <vtype> = type | void
-<type> = int / string / bool (*/ tident*)
+<type> = int / string / bool / atype (*/ tident*)
 tident = ident
-fident = ident <ws '.' ws> ident
+atype = type <ws '[' ws ']'>
+vident = ident
+aident = expr <ws '[' ws> expr < ws ']'>
+fident = eident <ws '.' ws> ident
+<eident> = vident | aident (*| fident*)
 int = <'int'>
 string = <'string'>
 bool = <'boolean'>
@@ -54,8 +59,9 @@ emul = exp4 <ws> mulop <ws> exp5
 <exp5> = neg | not | exp6 | bexpr
 neg = <'-' ws> exp6
 not = <'!' ws> exp6
-<exp6> = evar | elitint | elittrue | elitfalse | eapp | estring | bexpr (*| eclassinit | eclassfield | etypednull | ethis*)
-evar = ident
+<exp6> = evar | elitint | elittrue | elitfalse | eapp | estring | bexpr | earrlit (*| eclassinit | eclassfield | etypednull | ethis*)
+evar = eident
+earrlit = <'new' wp> type <ws '[' ws> expr <ws ']'>
 elitint = '-'? digit+
 elittrue = <'true'>
 elitfalse = <'false'>
