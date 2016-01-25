@@ -28,6 +28,16 @@
     [:bool] (const 0)
     ))
 
+(defn- type-size
+  [type]
+  (match type
+    [:int] (const 4)
+    [:bool] (const 4)
+    [:string] (const 4)
+    [:atype _] (const 4)
+
+    ))
+
 (defn- label-name
   [name lcount]
   (str "." name "label" lcount))
@@ -112,6 +122,10 @@
   [label]
   (println (str "\t" "jle" " " label)))
 
+(defn- lea_
+  [src dest]
+  (println (str "\t" "leal" " " src ", " dest)))
+
 (defn- leave_
   []
   (println (str "\t" "leave")))
@@ -130,6 +144,10 @@
   (if (= offset 0)
     (str "(" addr ")")
     (str (* 4 offset) "(" addr ")")))
+
+(defn- big-offset-addr
+  [addr offset]
+  (str "(" addr "," offset ")"))
 
 (def eax "%eax")
 (def ecx "%ecx")
@@ -154,20 +172,46 @@
     (println)
     ))
 
-(defn- evar_
-  [expr label-count]
-  (match expr
-    [:ident num]
-    (do
-      (move_ (offset-addr num ebp) eax)
-      (push_ eax)
-      label-count)
-    [:vident [:ident num]]
-    (do
-      (move_ (offset-addr num ebp) eax)
-      (push_ eax)
-      label-count)
+(defn- get-varnum
+  [name var label-count expr_]
+  (match var
+    [:ident num] (do
+                   (move_ ebp eax)
+                   (move_ (const num) edx)
+                   (imul_ (const 4) edx)
+                   (add_ edx eax)
+                   (push_ eax)
+                   label-count
+                   )
+    [:vident [:ident num]] (recur name [:ident num] label-count expr_)
+    [:aident eident expr] (let
+                            [nlc (get-varnum name eident label-count expr_)
+                             [_ type] (get-type eident)
+                             nlc1 (expr_ name expr nlc)]
+                            (pop_ edx)
+                            (imul_ (type-size type) edx)
+                            (pop_ eax)
+
+                            (lea_ (big-offset-addr eax edx) eax)
+                            (push_ (offset-addr 0 eax))
+                            nlc1
+                            )
+    [:fident eident expr](let
+                           [nlc (get-varnum name eident label-count expr_)
+                            nlc1 (expr_ name expr nlc)]
+                           (pop_ edx)
+                           (imul_ (const 4) edx)
+                           (pop_ eax)
+                           (lea_ (big-offset-addr eax edx) eax)
+                           (push_ (offset-addr 0 eax))
+                           nlc1
+                           )
     ))
+
+(defn- evar_
+  [name expr label-count expr_]
+  (get-varnum name expr label-count expr_)
+  )
 
 (defn- expr_
   [name expr label-count]
@@ -184,7 +228,7 @@
     :estring (do
                (push_ (const (string-addr name (second expr))))
                label-count)
-    :evar (evar_ (second expr) label-count)
+    :evar (evar_ name (second expr) label-count expr_)
     :neg (let
            [nlc (expr_ name (second expr) label-count)]
            (pop_ edx)
@@ -315,6 +359,19 @@
             (push_ eax)
             nlc
             )
+    :earrlit (let
+               [type (second expr)
+                nlc1 (expr_ name (third expr) label-count)]
+               (pop_ eax)
+               (move_ eax ecx)
+               (imul_ (type-size type) eax)
+               (add_ (const 4) eax)
+               (push_ eax)
+               (call_ "malloc")
+               (push_ eax)
+               (move_ ecx (offset-addr 0 eax))
+               nlc1
+               )
     ))
 
 (defn- return_
@@ -337,12 +394,6 @@
               (move_ (default-for-type type) (offset-addr num ebp))
               %1)) label-count decls))
 
-(defn- get-varnum
-  [var]
-  (match var
-    [:ident num] num
-    [:vident [:ident num]] num))
-
 (defn- stmt_
   [name stmt label-count]
   (let [type (get-type stmt)]
@@ -357,19 +408,23 @@
              nlc
              )
       :block (reduce #(stmt_ name %2 %1) label-count (rest stmt))
-      :incr (let [num (get-varnum (second stmt))]
-              (add_ (const 1) (offset-addr num ebp))
-              label-count)
-      :decr (let [num (get-varnum (second stmt))]
-              (sub_ (const 1) (offset-addr num ebp))
-              label-count)
+      :incr (let [nlc (get-varnum name (second stmt) label-count expr_)]
+              (pop_ eax)
+              (add_ (const 1) (offset-addr 0 eax))
+              nlc)
+      :decr (let [nlc (get-varnum name (second stmt) label-count expr_)]
+              (pop_ eax)
+              (sub_ (const 1) (offset-addr 0 eax))
+              nlc)
       :decl (do
               (decls_ name type (rest (rest stmt)) label-count))
-      :ass (let [ident (get-varnum (second stmt))
+      :ass (let [nlc (get-varnum name (second stmt) label-count expr_)
                  expr (third stmt)
-                 nlc (expr_ name expr label-count)]
-             (pop_ (offset-addr ident ebp))
-             nlc
+                 nlc1 (expr_ name expr nlc)]
+             (pop_ edx)
+             (pop_ eax)
+             (move_ edx (offset-addr 0 eax))
+             nlc1
              )
       :cond (let
               [nlc1 (expr_ name (second stmt) label-count)
