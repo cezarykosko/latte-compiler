@@ -593,6 +593,16 @@
        ]
       [vars2 (with-type [:ass [:fident neident [:eadd [:elitint 1] [:plus] nexpr]] expr] etype)]
       )
+    [:fident nident ident]
+    (domonad phase-m
+      [[vars1 neident] (annotate-eident glob-state vars nident location annotate-expr)
+       tmp (match (get-type neident)
+             [:atype _] (err (str "array field 'length' not assignable in: " location))
+             :else (succ "ok"))
+       [type offset] (lookup-clss-field glob-state (get-type neident) name location)
+       ]
+      [vars1 (with-type [:fident nident [:elitint offset]] type)]
+      )
     ))
 
 (defn- annotate-incr
@@ -709,8 +719,8 @@
 
 (defn- analyze-fun
   [glob-state funexpr]
-  (match funexpr [_ [get-type] [_ name] args block]
-    (if (not (or (= get-type :void) (util/returns? block)))
+  (match funexpr [_ get-type [_ name] _ block]
+    (if (not (or (= get-type [:void]) (util/returns? block)))
       (err (str "return not found in function " name "\n" (util/ip-meta funexpr)))
       (check-type glob-state funexpr)
       )
