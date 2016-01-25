@@ -591,7 +591,7 @@
        tmp (check-types [:atype etype] idtype "ok" location)
        tmp2 (check-types [:int] (get-type nexpr) "ok" location)
        ]
-      [vars2 (with-type [:ass [:fident neident nexpr] expr] etype)]
+      [vars2 (with-type [:ass [:fident neident [:eadd [:elitint 1] [:plus] nexpr]] expr] etype)]
       )
     ))
 
@@ -683,8 +683,9 @@
                                                     [:decl [:int] [:noinit ident]]
                                                     [:while [:erel [:evar [:vident ident]] [:lth] [:evar [:fident eident [:ident "length"]]]]
                                                      [:block
-                                                      [:decl type [:init ident [:evar [:aident eident [:evar [:vident ident]]]]]]
-                                                      [:block stmt]
+                                                      [:block
+                                                       [:decl type [:init ident [:evar [:aident eident [:evar [:vident ident]]]]]]
+                                                       [:block stmt]]
                                                       [:incr [:vident ident]]]]]
                                                    (meta code)))
                   (err (str "for statement on non-array type in: " location))

@@ -184,16 +184,17 @@
                    label-count
                    )
     [:vident [:ident num]] (recur name [:ident num] label-count expr_)
-    [:aident eident expr] (let
+    #_[:aident eident expr] #_(let
                             [nlc (get-varnum name eident label-count expr_)
                              [_ type] (get-type eident)
                              nlc1 (expr_ name expr nlc)]
                             (pop_ edx)
+                            (add_ (const 1) edx)
                             (imul_ (type-size type) edx)
                             (pop_ eax)
-
-                            (lea_ (big-offset-addr eax edx) eax)
-                            (push_ (offset-addr 0 eax))
+                            (move_ (offset-addr 0 eax) eax)
+                            (add_ edx eax)
+                            (push_ eax)
                             nlc1
                             )
     [:fident eident expr](let
@@ -202,15 +203,22 @@
                            (pop_ edx)
                            (imul_ (const 4) edx)
                            (pop_ eax)
-                           (lea_ (big-offset-addr eax edx) eax)
-                           (push_ (offset-addr 0 eax))
+                           (move_ (offset-addr 0 eax) eax)
+                           (add_ edx eax)
+                           (push_ eax)
                            nlc1
                            )
     ))
 
 (defn- evar_
   [name expr label-count expr_]
-  (get-varnum name expr label-count expr_)
+  (let
+    [nlc
+     (get-varnum name expr label-count expr_)]
+    (pop_ eax)
+    (move_ (offset-addr 0 eax) eax)
+    (push_ eax)
+    nlc)
   )
 
 (defn- expr_
@@ -363,11 +371,13 @@
                [type (second expr)
                 nlc1 (expr_ name (third expr) label-count)]
                (pop_ eax)
-               (move_ eax ecx)
+               (push_ eax)
                (imul_ (type-size type) eax)
                (add_ (const 4) eax)
                (push_ eax)
                (call_ "malloc")
+               (add_ (const 4) esp)
+               (pop_ ecx)
                (push_ eax)
                (move_ ecx (offset-addr 0 eax))
                nlc1
