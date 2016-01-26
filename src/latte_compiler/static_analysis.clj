@@ -405,11 +405,6 @@
     )
   )
 
-(domonad phase-m
-  [[vars2 lalela] (m-result [13 23])
-   [vars22 lalele] (m-result [(+ vars2 1) (+ lalela 3)])]
-  vars22)
-
 (defn- annotate-evar
   [glob-state vars ident location an-expr]
   (domonad phase-m
@@ -418,41 +413,7 @@
      type (m-result (get-type nident))
      res (succ [vars2 (with-type [:evar nident] type)])]
     res
-    )
-  #_(match ident
-      [:vident [:ident name]]
-      (domonad phase-m
-        [[type num] (lookup-var vars [:ident name] location)]
-        [vars (with-type [:evar [:vident [:ident num]]] type)])
-      [:fident eident name]
-      (domonad phase-m
-        [[_ nident] (annotate-evar glob-state vars eident location)
-         [type offset] (lookup-clss-field glob-state (get-type nident) name location)]
-        (do #_(util/println-err [:evar [:fident (second nident) [:ident offset]]])
-            [vars (with-type [:evar [:fident (second nident) [:ident offset]]] type)])
-        )
-      [:ident name]
-      (domonad phase-m
-        [[type num] (lookup-var vars [:ident name] location)]
-        [vars (with-type [:evar [:ident num]] type)])
-      ;[:aident lvar expr] (domonad phase-m
-      ;                        [[nvars nident] (fn glob-state vars lvar)]
-      ;                        [vars (with-type [:aident nident expr] [:int])]
-      ;                        )
-      ;[:aident eident expr] (domonad phase-m
-      ;                        [[nvars nident] (annotate-evar glob-state vars eident location fn)
-      ;                         [nnvars ins-expr] (fn glob-state nvars expr)
-      ;                         _ (if (is-int ins-expr) (succ "")
-      ;                                                 (err (str "expr type invalid; expected int, found "
-      ;                                                             (print-type (get-type ins-expr)) " in: " location)))
-      ;                         etype (match (get-type nident)
-      ;                                [:atype t] (succ t)
-      ;                                 :else (err (str "type invalid; expected array type, found " (print-type (get-type nident))
-      ;                                                   " in: " location)))]
-      ;                        [nnvars (with-type [:aident nident ins-expr] etype)]
-      ;                        )
-      )
-  )
+    ))
 
 (defn- annotate-expr
   [glob-state vars expr]
