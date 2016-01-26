@@ -2,10 +2,9 @@
   (:require
     [clojure.core.match :refer [match]]
     [clojure.algo.monads :refer [domonad]]
-    [latte-compiler.util :refer [succ err ip-meta phase-m third fourth returns?]]
+    [latte-compiler.util :refer [succ err ip-meta phase-m third fourth returns? toposort]]
     )
   (:use [latte-compiler.state]))
-
 
 (defn- merge-checks
   [acc cur]
@@ -20,6 +19,7 @@
   (match var
     [:vident [:ident name]] (str name)
     [:ident name] (str name)
+    :else (str var)
     ))
 
 (defn- vars-map
@@ -82,23 +82,34 @@
       (succ (second rec))
       )))
 
+(defn- lookup-field
+  [clss fields fident location]
+  (loop
+    [fields fields]
+    (if (empty? fields)
+      (err (str "field " (print-var clss) "." (print-var fident) " not found in: " location))
+      (let
+        [map (first fields)
+         res (find map fident)]
+        (if (nil? res)
+          (recur (rest fields))
+          (succ (second res))
+          )
+        )))
+  )
+
 (defn- lookup-clss-field
   [glob-state clss fident location]
   (match clss
     [:atype _] (recur glob-state [:ident "_arr"] fident location)
-    :else
+    [:ident type]
     (let
       [classes (.-classes glob-state)
        class (find classes clss)
        ]
       (if (nil? class)
         (err (str "class " (print-var clss) " not found in: " location))
-        (let [res (find (.-fields (second class)) fident)]
-          (if (nil? res)
-            (err (str "field " (print-var clss) "." (print-var fident) " not found in: " location))
-            (succ (second res))
-            )
-          )
+        (lookup-field clss (.-fields (second class)) fident location)
         )
       ))
 
@@ -130,13 +141,85 @@
     )
   )
 
+(defn- add-ident
+  [type location]
+  (fn
+    [fields ident]
+    (domonad phase-m
+      [[fields len] fields
+       res (if (contains? fields ident)
+             (err (str "field " (print-var ident) " already declared in: " location))
+             (succ [(assoc fields ident [type len]) (+ len 1)])
+             )
+       ]
+      res
+      )))
+
+(defn- appclassdefmap
+  [glob-state [fields funs len fundefs] clssdecl]
+    (match (first clssdecl)
+      :fdecl
+      (domonad phase-m
+        [type (m-result (second clssdecl))
+         idents (m-result (rest (rest clssdecl)))
+         [nfields nlen] (reduce (add-ident type (ip-meta clssdecl)) (m-result [fields len]) idents)
+         ]
+        [nfields funs nlen fundefs])
+      ))
+
+(defn- clssdefmpstep
+  [glob-state]
+  (fn
+    [acc val]
+    (domonad phase-m
+      [args  acc
+       res (appclassdefmap glob-state args val)]
+      res
+      ))
+  )
+
+(defn- clssname
+  [clssexpr]
+  (second clssexpr))
+
+(defn- clssdef
+  [glob-state ident clssdecls fields funs len]
+  (domonad phase-m
+    [inacc (m-result [{} {} len ()])
+     [nfields nfuns nlen fundefs] (reduce (clssdefmpstep glob-state) (m-result inacc) clssdecls)
+     nclssdef (m-result (->ClassDef (conj fields nfields) (conj funs nfuns) nlen))
+     ]
+    [nclssdef fundefs]
+
+    )
+  )
+
+(defn- makeclassdef
+  [glob-state clssexpr]
+  (if (nil? (find (.-classes glob-state) (second clssexpr)))
+    (match (first clssexpr)
+      :noextclssdef (clssdef glob-state (second clssexpr) (rest (rest clssexpr)) '() '() 0)
+
+      )
+    (err (str "class " (print-var (clssname clssexpr)) " already defined in: " (ip-meta clssexpr))))
+  )
+
+(defn- addclss-red-step
+  [glob-state clssexpr]
+  (domonad phase-m
+    [glob-state glob-state
+     [nclssdef fundefs] (makeclassdef glob-state clssexpr)
+     glob-state1 (m-result (update glob-state :classes (fn [classes] (assoc classes (second clssexpr) nclssdef))))
+     glob-state2 (m-result (update glob-state1 :funs (fn [funs] (reduce conj funs fundefs))))
+     ]
+    glob-state2))
+
+
 (defn class-dep
   [clsdef]
-  (let [type (first clsdef)]
-    (if (= type :noextclssdef)
-      nil
-      (second (nth clsdef 2))
-      )
+  (match (first clsdef)
+    :noextclssdef nil
+    :extclssdef (third clsdef)
     ))
 
 (defn class-name
@@ -195,9 +278,9 @@
   [buffer expr]
   (match (first expr)
     :noextclssdef
-    [(conj (first buffer) (second expr)) (second buffer)]
+    [(conj (first buffer) expr) (second buffer)]
     :extclssdef
-    [(conj (first buffer) (second expr)) (second buffer)]
+    [(conj (first buffer) expr) (second buffer)]
     :fndef
     [(first buffer) (conj (second buffer) expr)]
     )
@@ -212,12 +295,6 @@
     (err "no correct main function found")
     )
   )
-
-(defn- analyze-class
-  [glob-state clssexpr]
-  (succ (match (first clssexpr)
-          :noextclssdef (makeclassdef glob-state clssexpr false)
-          :extclssdef (makeclassdef glob-state clssexpr true))))
 
 (defn- add-arg
   [vmap arg]
@@ -287,6 +364,10 @@
 (defn- is-int
   [x]
   (= (get-type x) [:int]))
+
+(defn- is-void
+  [x]
+  (= (get-type x) [:void]))
 
 (defn- annotate-erel
   [vars lexpr rexpr relop location]
@@ -396,6 +477,29 @@
 
                   ]
                  [nvars (with-type [:earrlit type ins-expr] [:atype type])])
+      :etypednull (domonad phase-m
+                    [type (m-result (second expr))
+                     tmp (if (contains? ["void" "int" "boolean" "string"] (second type))
+                           (err (str "expected class type, found " (print-var type) " in: " location))
+                           (succ "ok")
+                           )
+                     tmp2 (if (contains? (.-classes glob-state) type)
+                            (succ "ok")
+                            (err (str "type " (print-var type) " not found in: " location)))
+                     ]
+                    [vars (with-type [:etypednull type] type)]
+                    )
+      :eclassinit (domonad phase-m
+                    [type (m-result (second expr))
+                     tmp (if (contains? ["void" "int" "boolean" "string"] (second type))
+                           (err (str "expected class type, found " (print-var type) " in: " location))
+                           (succ "ok")
+                           )
+                     tmp2 (if (contains? (.-classes glob-state) type)
+                            (succ "ok")
+                            (err (str "type " (print-var type) " not found in: " location)))]
+                    [vars (with-type [:eclassinit type] type)]
+                    )
       :estring (let
                  [[num nvar] (add-string vars (second expr))]
                  (succ [nvar (with-type [:estring num] [:string])]))
@@ -535,9 +639,10 @@
        tmp (match (get-type neident)
              [:atype _] (err (str "array field 'length' not assignable in: " location))
              :else (succ "ok"))
-       [type offset] (lookup-clss-field glob-state (get-type neident) name location)
+       [type offset] (lookup-clss-field glob-state (get-type neident) ident location)
+       tmp (check-types type (get-type expr) "ok" location)
        ]
-      [vars1 (with-type [:fident nident [:elitint offset]] type)]
+      [vars1 (with-type [:ass [:fident neident [:elitint offset]] expr] type)]
       )
     ))
 
@@ -591,8 +696,12 @@
               res (check-types type (get-type expr) [nvars (with-type [:ret expr] (get-type expr))] location)
               ]
              res)
-      :incr (annotate-incr glob-state vars location (second code) :incr)
-      :decr (annotate-incr glob-state vars location (second code) :decr)
+      :incr (annotate-code glob-state vars (with-meta [:ass (second code) [:eadd [:evar (second code)] [:plus] [:elitint 1]]] (meta code)))
+      :decr (annotate-code glob-state vars (with-meta [:ass (second code) [:eadd [:evar (second code)] [:minus] [:elitint 1]]] (meta code)))
+
+
+      #_(annotate-incr glob-state vars location (second code) :incr)
+      #_:decr #_(annotate-incr glob-state vars location (second code) :decr)
       :decl (domonad phase-m
               [type (m-result (second code))
                decls (m-result (rest (rest code)))
@@ -680,25 +789,24 @@
       [state glob-state
        res (match (first expr)
              ;:clssdef (analyze-class state (second expr))
-             :fndef (analyze-fun state expr)
-             :else (succ expr))
+             :fndef (analyze-fun state expr))
        ]
       res)))
-
-
 
 (defn analize
   [tree]
   (let
     [glob-state default-state
      [split-clss split-funs] (reduce bucketize [[] []] tree)
-     ;classes (do (util/toposort (vec split-clss) class-name class-dep))
+     classes (toposort (vec split-clss) class-name class-dep)
      ]
     (domonad phase-m
-      [funs (funsred split-funs (.-funs glob-state))
+      [
+       funs (funsred split-funs (.-funs glob-state))
        new-glob-state (m-result (update glob-state :funs (fn [_] funs)))
-       n-glob-state (main-check new-glob-state)
+       fin-glob-state (reduce addclss-red-step (m-result new-glob-state) classes)
+       n-glob-state (main-check fin-glob-state)
        result (reduce merge-checks (m-result []) (map (check (m-result n-glob-state)) split-funs))
        ]
-      result
+      [n-glob-state result]
       )))
