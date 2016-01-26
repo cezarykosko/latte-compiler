@@ -623,7 +623,7 @@
     ))
 
 (defn- annotate-incr
-  [vars location eident key]
+  [glob-state vars location eident key]
   (match eident
     [:vident name]
     (domonad phase-m
@@ -635,6 +635,16 @@
       [[type num] (lookup-var vars [:ident name] location)
        res (check-types [:int] type [vars (with-type [key [:ident num]] [:int])] location)]
       res)
+    [:aident nident iexpr]
+    (domonad phase-m
+      [[vars1 neident] (annotate-expr glob-state vars nident)
+       [vars2 nexpr] (annotate-expr glob-state vars1 iexpr)
+       etype (m-result [:int])
+       idtype (m-result (get-type neident))
+       tmp (check-types [:atype etype] idtype "ok" location)
+       tmp2 (check-types [:int] (get-type nexpr) "ok" location)]
+      [vars2 (with-type [key [:fident neident [:eadd [:elitint 1] [:plus] nexpr]]] etype)]
+      )
     ))
 
 (defn- annotate-code
@@ -662,8 +672,8 @@
               res (check-types type (get-type expr) [nvars (with-type [:ret expr] (get-type expr))] location)
               ]
              res)
-      :incr (annotate-incr vars location (second code) :incr)
-      :decr (annotate-incr vars location (second code) :decr)
+      :incr (annotate-incr glob-state vars location (second code) :incr)
+      :decr (annotate-incr glob-state vars location (second code) :decr)
       :decl (domonad phase-m
               [type (m-result (second code))
                decls (m-result (rest (rest code)))
