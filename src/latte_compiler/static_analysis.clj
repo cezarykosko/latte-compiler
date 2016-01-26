@@ -2,22 +2,13 @@
   (:require
     [clojure.core.match :refer [match]]
     [clojure.algo.monads :refer [domonad]]
-    [latte-compiler.util :as util]
-    [latte-compiler.util :refer [succ err ip-meta phase-m]]
+    [latte-compiler.util :refer [succ err ip-meta phase-m third fourth returns?]]
     ))
 
 (defrecord ClassDef [extends fields funs])
 (defrecord FunDef [name outType inTypes])
 (defrecord FieldDef [name type])
 (defrecord GlobState [classes funs std-types])
-
-(defn- third
-  [coll]
-  (first (next (next coll))))
-
-(defn- fourth
-  [coll]
-  (first (next (next (next coll)))))
 
 (defn- merge-checks
   [acc cur]
@@ -399,7 +390,7 @@
 
 (defn- annotate-expr
   [glob-state vars expr]
-  (let [location (util/ip-meta expr)]
+  (let [location (ip-meta expr)]
     (match (first expr)
       :elitint (if (or (> (second expr) 2147483647) (< (second expr) -2147483648))
                  (err (str "int literal not in the [-2147483648, 2147483647] range in " location))
@@ -524,7 +515,7 @@
                             [num [a b c d]] (add-var ntvars ident type)
                             res (if (= type ntype)
                                   (succ [[a b c d] (conj decls [:init [:ident num] nexpr])])
-                                  (err (str "declaration invalid; expected " (print-type type) ", found " (print-type ntype) " in " (util/ip-meta decl))))]
+                                  (err (str "declaration invalid; expected " (print-type type) ", found " (print-type ntype) " in " (ip-meta decl))))]
                            res
                            )
       )))
@@ -592,7 +583,7 @@
 
 (defn- annotate-code
   [glob-state vars code]
-  (let [location (util/ip-meta code)]
+  (let [location (ip-meta code)]
     (match (first code)
       :block (domonad phase-m
                [[avars result] (reduce (fn [env code]
@@ -611,7 +602,7 @@
       :ret (domonad phase-m
              [[nvars expr] (annotate-expr glob-state vars (second code))
               [type _] (lookup-var nvars "_return_" location)
-              tmp (if (= type [:void]) (err (str "returning void function not allowed in " (util/ip-meta location))) (succ ""))
+              tmp (if (= type [:void]) (err (str "returning void function not allowed in " (ip-meta location))) (succ ""))
               res (check-types type (get-type expr) [nvars (with-type [:ret expr] (get-type expr))] location)
               ]
              res)
@@ -690,8 +681,8 @@
 (defn- analyze-fun
   [glob-state funexpr]
   (match funexpr [_ get-type [_ name] _ block]
-    (if (not (or (= get-type [:void]) (util/returns? block)))
-      (err (str "return not found in function " name "\n" (util/ip-meta funexpr)))
+    (if (not (or (= get-type [:void]) (returns? block)))
+      (err (str "return not found in function " name "\n" (ip-meta funexpr)))
       (check-type glob-state funexpr)
       )
     )

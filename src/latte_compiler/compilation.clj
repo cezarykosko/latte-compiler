@@ -1,14 +1,6 @@
 (ns latte-compiler.compilation
-  (:require [latte-compiler.util :as util]
+  (:require [latte-compiler.util :refer [third fourth]]
             [clojure.core.match :refer [match]]))
-
-(defn- third
-  [coll]
-  (first (next (next coll))))
-
-(defn- fourth
-  [coll]
-  (first (next (next (next coll)))))
 
 (defn- const
   [name]

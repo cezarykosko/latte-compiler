@@ -2,6 +2,14 @@
   (:require [clojure.algo.monads :as m]
             [clojure.core.match :as match]))
 
+(defn third
+  [coll]
+  (first (next (next coll))))
+
+(defn fourth
+  [coll]
+  (first (next (next (next coll)))))
+
 (defn println-err
   [msg]
   (binding [*out* *err*]
