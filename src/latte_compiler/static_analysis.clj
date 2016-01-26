@@ -3,12 +3,9 @@
     [clojure.core.match :refer [match]]
     [clojure.algo.monads :refer [domonad]]
     [latte-compiler.util :refer [succ err ip-meta phase-m third fourth returns?]]
-    ))
+    )
+  (:use [latte-compiler.state]))
 
-(defrecord ClassDef [extends fields funs])
-(defrecord FunDef [name outType inTypes])
-(defrecord FieldDef [name type])
-(defrecord GlobState [classes funs std-types])
 
 (defn- merge-checks
   [acc cur]
@@ -16,22 +13,6 @@
     [acc acc
      curr cur]
     (conj acc curr)
-    ))
-
-(def default-state
-  (->GlobState
-    (hash-map
-      [:ident "_arr"] (->ClassDef nil {[:ident "length"] [[:int] 0]} [])
-      )
-    (hash-map
-      [:ident "printInt"] (->FunDef [:ident "printInt"] [:void] [[:int]])
-      [:ident "printString"] (->FunDef [:ident "printString"] [:void] [[:string]])
-      [:ident "error"] (->FunDef [:ident "error"] [:void] [])
-      [:ident "readInt"] (->FunDef [:ident "readInt"] [:int] [])
-      [:ident "readString"] (->FunDef [:ident "readString"] [:string] [])
-      [:ident "malloc"] (->FunDef [:ident "malloc"] [:int] [:int])
-      )
-    (hash-set :void :int :string :boolean)
     ))
 
 (defn- print-var
@@ -212,8 +193,12 @@
 
 (defn- bucketize
   [buffer expr]
-  (if (= :clssdef (first expr))
+  (match (first expr)
+    :noextclssdef
     [(conj (first buffer) (second expr)) (second buffer)]
+    :extclssdef
+    [(conj (first buffer) (second expr)) (second buffer)]
+    :fndef
     [(first buffer) (conj (second buffer) expr)]
     )
   )
@@ -695,7 +680,9 @@
       [state glob-state
        res (match (first expr)
              ;:clssdef (analyze-class state (second expr))
-             :fndef (analyze-fun state expr))]
+             :fndef (analyze-fun state expr)
+             :else (succ expr))
+       ]
       res)))
 
 
@@ -711,7 +698,7 @@
       [funs (funsred split-funs (.-funs glob-state))
        new-glob-state (m-result (update glob-state :funs (fn [_] funs)))
        n-glob-state (main-check new-glob-state)
-       result (reduce merge-checks (m-result []) (map (check (m-result n-glob-state)) tree))
+       result (reduce merge-checks (m-result []) (map (check (m-result n-glob-state)) split-funs))
        ]
       result
       )))
