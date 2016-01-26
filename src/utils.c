@@ -42,3 +42,7 @@ char* _concatStrings(char* str1, char* str2) {
 int _eqStrings(char* str1, char* str2) {
 	return (strcmp(str1, str2) == 0);
 }
+
+void _memSet(void *addr, int size) {
+	memset(addr, 0, size);
+}
