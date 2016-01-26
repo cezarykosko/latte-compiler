@@ -1,3 +1,15 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [latte-compiler](#latte-compiler)
+  - [Usage](#usage)
+  - [3rd party libraries](#3rd-party-libraries)
+  - [catalogue structure](#catalogue-structure)
+  - [Slow startup issue](#slow-startup-issue)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # latte-compiler
 
 A Clojure compiler of [Latte programming language](http://www.mimuw.edu.pl/~ben/Zajecia/Mrj2015/Latte/)
