@@ -112,9 +112,6 @@
 
 (defn- lookup-clss-field
   [glob-state clss fident location]
-  #_(util/println-err (str
-                      clss " " fident " " location)
-    )
   (match clss
     [:atype _] (recur glob-state [:ident "_arr"] fident location)
     :else
@@ -153,11 +150,8 @@
     [true [:tident [:ident ident]]]
     (let [parent-map (get (:classes glob-state) ident)]
       (if (nil? parent-map)
-        (do
-          #_(util/println-err (str "ERROR: no such type: " ident " in"))
-          ;(util/println-ip-meta clssexpr)
-          (assoc glob-state :violations true)
-          )
+        (assoc glob-state :violations true)
+
         (makeclassdefmap glob-state parent-map (second clssexpr) (nth clssexpr 3)))
       )
     [false _] (makeclassdefmap glob-state (hash-map) (second clssexpr) (nth clssexpr 2))
@@ -320,10 +314,6 @@
 
 (defn- annotate-erel
   [vars lexpr rexpr relop location]
-  (util/println-err (str lexpr " " (get-type lexpr)))
-  (util/println-err (str rexpr " " (get-type rexpr)))
-  (util/println-err relop)
-  (util/println-err location)
   (match [lexpr rexpr relop]
     [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:eq]]
     (succ [vars (with-type [:eapp [:ident "_eqStrings"] [lexpr rexpr]] [:bool])])
@@ -331,15 +321,16 @@
     [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:ieq]]
     (succ [vars (with-type [:not [:eapp [:ident "_eqStrings"] [lexpr rexpr]]] [:bool])])
 
-    [(lexpr :guard #(is-bool %)) (rexpr :guard #(is-bool %)) (:or [:eq] [:ieq])]
-    (succ [vars (with-type [:erel lexpr relop rexpr] [:bool])])
-
     [(lexpr :guard #(is-int %)) (rexpr :guard #(is-int %)) relop]
     (succ [vars (with-type [:erel lexpr relop rexpr] [:bool])])
 
-    [_ _ (:or [:eq] [:ieq])]
-    (err (str "expr invalid; expected int,int or bool,bool or string,string, "
-           "found " (print-type (get-type lexpr)) ", " (print-type (get-type rexpr)) " in: " location))
+    [lexpr rexpr (:or [:eq] [:ieq])]
+    (if (= (get-type lexpr)
+          (get-type rexpr))
+      (succ [vars (with-type [:erel lexpr relop rexpr] [:bool])])
+      (err (str "expr invalid; expected " (get-type lexpr) ", found " (get-type rexpr)
+             " in: " location))
+      )
 
     :else
     (err (str "expr invalid; expected int,int, "
@@ -348,10 +339,6 @@
 
 (defn- annotate-eadd
   [vars lexpr rexpr relop location]
-    (util/println-err (str lexpr " " (get-type lexpr)))
-  (util/println-err (str rexpr " " (get-type rexpr)))
-  (util/println-err relop)
-  (util/println-err location)
   (match [lexpr rexpr relop]
     [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:plus]]
     (succ [vars (with-type [:eapp [:ident "_concatStrings"] [lexpr rexpr]] [:string])])
@@ -370,20 +357,15 @@
 
 (defn- annotate-eident
   [glob-state vars eident location an-expr]
-  (util/println-err eident)
   (match eident
     [:vident [:ident name]] (domonad phase-m
                               [[type num] (lookup-var vars [:ident name] location)]
-                              (do #_(util/println-err type)
-                                  #_(util/println-err num)
-                                  [vars (with-type [:vident [:ident num]] type)])
+                              [vars (with-type [:vident [:ident num]] type)]
                               )
     [:fident neident name] (domonad phase-m
                             [[vars2 nident] (an-expr glob-state vars neident)
                              [type offset] (lookup-clss-field glob-state (get-type nident) name location)]
-                             (do
-                               (util/println-err type)
-                               [vars2 (with-type [:fident nident [:elitint offset]] type)])
+                             [vars2 (with-type [:fident nident [:elitint offset]] type)]
                              )
     [:aident neident expr] (domonad phase-m
                             [[vars2 nident] (an-expr glob-state vars neident)

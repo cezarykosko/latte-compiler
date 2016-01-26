@@ -180,19 +180,7 @@
     [:ident num]
     [label-count (offset-addr num ebp)]
     [:vident [:ident num]] (recur name [:ident num] label-count expr_)
-    #_[:aident eident expr] #_(let
-                            [nlc (get-varnum name eident label-count expr_)
-                             [_ type] (get-type eident)
-                             nlc1 (expr_ name expr nlc)]
-                            (pop_ edx)
-                            (add_ (const 1) edx)
-                            (imul_ (type-size type) edx)
-                            (pop_ eax)
-                            (move_ (offset-addr 0 eax) eax)
-                            (add_ edx eax)
-                            (push_ eax)
-                            nlc1
-                            )
+
     ; obj & addr -> addr
     [:fident eident expr] (let
                            [nlc (expr_ name eident label-count)
@@ -209,20 +197,7 @@
 (defn- evar_
   [name expr label-count expr_]
   (let
-    [[nlc addr]
-     (get-varnum name expr label-count expr_)
-     type (get-type expr)]
-    #_(if (or
-          (= type [:int])
-          (= type [:bool])
-          )
-      (do
-        (pop_ eax)
-        (move_ (offset-addr 0 eax) eax)
-        (push_ eax)))
-    #_(pop_ eax)
-    #_(move_ (offset-addr 0 eax) eax)
-    #_(push_ eax)
+    [[nlc addr] (get-varnum name expr label-count expr_)]
     (push_ addr)
     nlc)
   )
