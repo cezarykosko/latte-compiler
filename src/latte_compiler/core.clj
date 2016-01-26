@@ -23,7 +23,9 @@
   (m/domonad util/phase-m
     [code (read-file filepath)
      tree (grammar/parse code)
-     aug-tree (analysis/analize tree)
+     aug-tree (do
+                (util/println-err tree)
+                (analysis/analize tree))
      ]
     aug-tree))
 

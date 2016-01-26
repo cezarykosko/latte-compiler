@@ -320,6 +320,10 @@
 
 (defn- annotate-erel
   [vars lexpr rexpr relop location]
+  (util/println-err (str lexpr " " (get-type lexpr)))
+  (util/println-err (str rexpr " " (get-type rexpr)))
+  (util/println-err relop)
+  (util/println-err location)
   (match [lexpr rexpr relop]
     [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:eq]]
     (succ [vars (with-type [:eapp [:ident "_eqStrings"] [lexpr rexpr]] [:bool])])
@@ -344,6 +348,10 @@
 
 (defn- annotate-eadd
   [vars lexpr rexpr relop location]
+    (util/println-err (str lexpr " " (get-type lexpr)))
+  (util/println-err (str rexpr " " (get-type rexpr)))
+  (util/println-err relop)
+  (util/println-err location)
   (match [lexpr rexpr relop]
     [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:plus]]
     (succ [vars (with-type [:eapp [:ident "_concatStrings"] [lexpr rexpr]] [:string])])
@@ -362,7 +370,7 @@
 
 (defn- annotate-eident
   [glob-state vars eident location an-expr]
-  #_(util/println-err eident)
+  (util/println-err eident)
   (match eident
     [:vident [:ident name]] (domonad phase-m
                               [[type num] (lookup-var vars [:ident name] location)]
@@ -371,12 +379,14 @@
                                   [vars (with-type [:vident [:ident num]] type)])
                               )
     [:fident neident name] (domonad phase-m
-                            [[vars2 nident] (annotate-eident glob-state vars neident location an-expr)
+                            [[vars2 nident] (an-expr glob-state vars neident)
                              [type offset] (lookup-clss-field glob-state (get-type nident) name location)]
-                            [vars2 (with-type [:fident nident [:elitint offset]] type)]
-                            )
+                             (do
+                               (util/println-err type)
+                               [vars2 (with-type [:fident nident [:elitint offset]] type)])
+                             )
     [:aident neident expr] (domonad phase-m
-                            [[vars2 nident] (annotate-eident glob-state vars neident location an-expr)
+                            [[vars2 nident] (an-expr glob-state vars neident)
                              [vars3 nexpr] (an-expr glob-state vars2 expr)
                              tmp (check-types [:int] (get-type nexpr) "ok" location)
                              res (match (get-type nident)
@@ -458,7 +468,14 @@
                   type (m-result (second expr))
                   _ (if (is-int ins-expr) (succ "")
                                           (err (str "expr type invalid; expected int, found "
-                                                 (print-type (get-type ins-expr)) " in: " location)))]
+                                                 (print-type (get-type ins-expr)) " in: " location)))
+                  _ (match ins-expr
+                      [:elitint x] (if (< x 0)
+                                     (err (str "array size declared negative in: " location))
+                                     (succ "ok"))
+                      :else (succ "ok"))
+
+                  ]
                  [nvars (with-type [:earrlit type ins-expr] [:atype type])])
       :estring (let
                  [[num nvar] (add-string vars (second expr))]
@@ -584,7 +601,7 @@
       res)
     [:aident neident iexpr]
     (domonad phase-m
-      [[vars1 neident] (annotate-eident glob-state vars neident location annotate-expr)
+      [[vars1 neident] (annotate-expr glob-state vars neident)
        [vars2 nexpr] (annotate-expr glob-state vars1 iexpr)
        etype (m-result (get-type expr))
        idtype (m-result (get-type neident))
@@ -595,7 +612,7 @@
       )
     [:fident nident ident]
     (domonad phase-m
-      [[vars1 neident] (annotate-eident glob-state vars nident location annotate-expr)
+      [[vars1 neident] (annotate-expr glob-state vars nident)
        tmp (match (get-type neident)
              [:atype _] (err (str "array field 'length' not assignable in: " location))
              :else (succ "ok"))
@@ -685,7 +702,7 @@
       :for (match code
              [:for type ident eident stmt]
              (domonad phase-m
-               [[_ neident] (annotate-eident glob-state vars eident location annotate-expr)
+               [[_ neident] (annotate-expr glob-state vars eident)
                 res
                 (if (= (first (get-type neident)) :atype)
                   (annotate-code glob-state vars (with-meta
