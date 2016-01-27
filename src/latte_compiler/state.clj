@@ -3,12 +3,13 @@
 (defrecord ClassDef [fields funs size parents])
 (defrecord FunDef [name outType inTypes])
 (defrecord FieldDef [name type])
-(defrecord GlobState [classes funs std-types])
+(defrecord GlobState [cls-parents classes funs std-types])
 
 (def default-state
   (->GlobState
+    (hash-map)
     (hash-map
-      [:ident "_arr"] (->ClassDef '({[:ident "length"] [[:int] 0]}) '() 0 '([:ident "_arr"]))
+      [:ident "_arr"] (->ClassDef '({[:ident "length"] [[:int] 0]}) {} 0 '([:ident "_arr"]))
       )
     (hash-map
       [:ident "printInt"] (->FunDef [:ident "printInt"] [:void] [[:int]])

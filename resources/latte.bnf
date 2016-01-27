@@ -6,7 +6,7 @@ fndef = vtype <wp> ident <ws ob ws> args <ws cb ws> block
 noextclssdef = <'class' wp> ident <ws '{' ws> clssdecls <ws '}'>
 extclssdef = <'class' wp> ident <wp 'extends' wp> tident <ws '{' ws> clssdecls <'}'>
 <clssdecls> = (clssdecl <ws> )*
-<clssdecl> = fdecl (*| fndef*)
+<clssdecl> = fdecl | fndef
 arg = type <wp> ident
 args = epsilon | arg (<ws ',' ws> arg)*
 
@@ -32,7 +32,7 @@ while = <'while' ws '(' ws> expr <ws ')' ws> stmt
 for = <'for' ws '(' ws> type <wp> ident <ws ':' ws> expr <ws ')' ws> stmt
 sexp = expr <ws ';'>
 
-<vtype> = type | void
+<vtype> = void / type
 <type> = int / string / bool / atype / tident
 <tident> = ident
 atype = type <ws '[' ws ']'>
@@ -61,7 +61,7 @@ emul = exp4 <ws> mulop <ws> exp5
 <exp5> = neg | not | exp6 | bexpr
 neg = <'-' ws> exp6
 not = <'!' ws> exp6
-<exp6> = evar | elitint | elittrue | elitfalse | eapp | estring | bexpr | (earrlit / eclassinit / etypednull) (* | ethis*)
+<exp6> = evar | elitint | elittrue | elitfalse | eapp | fapp | estring | bexpr | (earrlit / eclassinit / etypednull)
 evar = eident
 earrlit = <'new' wp> type <ws '[' ws> expr <ws ']'>
 eclassinit = <'new' wp> tident
@@ -70,9 +70,7 @@ elittrue = <'true'>
 elitfalse = <'false'>
 etypednull = <ob ws> tident <cb ws 'null'>
 eapp = ident <ws ob ws> exprs <ws cb>
-ethis = <'this'>
-<eclassfield> = fident | fapp
-fapp = ident <ws '.' ws> eapp
+fapp = exp6 <ws '.' ws> ident <ws ob ws> exprs <ws cb>
 estring = stringlit
 
 

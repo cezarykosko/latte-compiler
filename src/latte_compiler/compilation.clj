@@ -2,6 +2,10 @@
   (:require [latte-compiler.util :refer [third fourth]]
             [clojure.core.match :refer [match]]))
 
+(defn- ptr
+  [reg]
+  (str "*" reg))
+
 (defn- const
   [name]
   (str "$" name))
@@ -122,16 +126,11 @@
   [name n]
   (str name "string" n))
 
-
 (defn- offset-addr
   [offset addr]
   (if (= offset 0)
     (str "(" addr ")")
     (str (* 4 offset) "(" addr ")")))
-
-(defn- big-offset-addr
-  [addr offset]
-  (str "(" addr "," offset ")"))
 
 (def eax "%eax")
 (def ecx "%ecx")
@@ -159,24 +158,21 @@
 (defn- get-varnum
   [glob-state name var label-count expr_]
   (match var
-    ; addr
     [:ident num]
     [label-count (offset-addr num ebp)]
     [:vident [:ident num]] (recur glob-state name [:ident num] label-count expr_)
 
-    ; obj & addr -> addr
     [:fident eident expr] (let
-                           [nlc (expr_ glob-state name eident label-count)
-                            nlc1 (expr_ glob-state name expr nlc)]
-                           (pop_ edx)
-                           (imul_ (const 4) edx)
-                           (pop_ eax)
-                           (add_ edx eax)
-                           [nlc1 (offset-addr 0 eax)]
-                           )
+                            [nlc (expr_ glob-state name eident label-count)
+                             nlc1 (expr_ glob-state name expr nlc)]
+                            (pop_ edx)
+                            (imul_ (const 4) edx)
+                            (pop_ eax)
+                            (add_ edx eax)
+                            [nlc1 (offset-addr 0 eax)]
+                            )
     ))
 
-; addr -> obj
 (defn- evar_
   [glob-state name expr label-count expr_]
   (let
@@ -323,6 +319,20 @@
             (push_ eax)
             nlc2
             )
+    :eclsapp (let
+               [offset (second expr)
+                args (reverse (third expr))
+                nargs (count args)
+                nlc (reduce #(expr_ glob-state name %2 %1)
+                      label-count args)]
+               (pop_ eax)
+               (push_ eax)
+               (move_ (offset-addr offset eax) eax)
+               (call_ (ptr eax))
+               (add_ (const (* 4 nargs)) esp)
+               (push_ eax)
+               nlc
+               )
     :eapp (let
             [ident (second (second expr))
              args (reverse (third expr))
@@ -335,8 +345,7 @@
             nlc
             )
     :earrlit (let
-               [type (second expr)
-                nlc1 (expr_ glob-state name (third expr) label-count)]
+               [nlc1 (expr_ glob-state name (third expr) label-count)]
                (pop_ eax)
                (push_ eax)
                (imul_ (const 4) eax)
@@ -356,6 +365,7 @@
                   [type (second expr)
                    clssdecl (second (find (.-classes glob-state) type))
                    size (.-size clssdecl)
+                   funs (.-funs clssdecl)
                    ]
                   (push_ (const (* 4 size)))
                   (call_ "malloc")
@@ -363,6 +373,11 @@
                   (call_ "_memSet")
                   (pop_ eax)
                   (pop_ ecx)
+                  (doseq [def (vals funs)]
+                    (let
+                      [[fndef offset] def]
+                      (move_ (const (.-name fndef)) (offset-addr offset eax)))
+                    )
                   (push_ eax)
                   label-count)
     ))
@@ -465,7 +480,7 @@
   [glob-state fun]
   (let
     [[_ [nargs _] nstrings strings] (second (find (meta fun) "_vars"))
-     [_ type [_ name] args block] fun
+     [_ type [_ name] _ block] fun
      ]
     (strings_ name strings nstrings)
     (println (str "\t" ".globl" "\t" name))
@@ -479,7 +494,6 @@
     (if (= type [:void])
       (return_))
     ))
-
 
 (defn asm-compile
   [glob-state tree]
