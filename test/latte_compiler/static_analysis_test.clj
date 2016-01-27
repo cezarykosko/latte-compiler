@@ -7,7 +7,7 @@
 (deftest ext-name
    (testing "whether the extension name is correct")
    (is (nil? (static-analysis/class-dep [:noextclssdef [:ident "Node"] [:clssdecls]])))
-   (is (= (static-analysis/class-dep [:extclssdef [:ident "Rectangle"] [:tident [:ident "Shape"]]]) [:ident "Shape"]))
+   (is (= (static-analysis/class-dep [:extclssdef [:ident "Rectangle"] [:ident "Shape"]]) [:ident "Shape"]))
 )
 
 (deftest name
