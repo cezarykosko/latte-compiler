@@ -20,6 +20,7 @@ A Clojure compiler of an extended version of [Latte programming language](http:/
 
 Following extensions have been implemented:
 - arrays with a basic for statement ( `for ( int a : array)` )
+ - arrays are initialized with `0/false` for `int`s and `boolean`s, for all others they're filled up with `null`s
 - classes with single extensions (with virtual methods)
  - every class method is considered virtual
  - global functions are prioritized over instance methods
@@ -32,6 +33,8 @@ i.e. if `class A extends B` and `class C` has a method `B doSomething(A thing)`,
 ## Usage
 
 After calling `make` the `latc_x86`, `latc` and `latc_drip` binaries are ready to use. Calling `latc_x86 foo/bar/baz.lat` (or `latc foo/bar/baz.lat`, or `latc_drip foo/bar/baz.lat`) will, should code compile, create files `baz.s` (x86 assembly code) and `baz` (the executable) in the `foo/bar` directory.
+
+Works with UNIX line endings only.
 
 ## 3rd party libraries
 
