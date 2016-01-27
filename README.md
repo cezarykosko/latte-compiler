@@ -29,6 +29,7 @@ Following extensions have been implemented:
 reverse for return types;
 i.e. if `class A extends B` and `class C` has a method `B doSomething(A thing)`, then
 `class D extends C` may overwrite it with a method `A doSomething(B thing)`
+ - only implicit type casts are allowed, except for `null`, which has to be cast explicitly
 
 ## Usage
 
