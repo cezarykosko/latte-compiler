@@ -466,7 +466,7 @@
   (= (get-type x) [:int]))
 
 (defn- annotate-erel
-  [vars lexpr rexpr relop location]
+  [glob-state vars lexpr rexpr relop location]
   (match [lexpr rexpr relop]
     [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:eq]]
     (succ [vars (with-type [:eapp [:ident "_eqStrings"] [lexpr rexpr]] [:bool])])
@@ -478,11 +478,11 @@
     (succ [vars (with-type [:erel lexpr relop rexpr] [:bool])])
 
     [lexpr rexpr (:or [:eq] [:ieq])]
-    (if (= (get-type lexpr)
+    (if (check-types-helper glob-state (get-type lexpr)
           (get-type rexpr))
       (succ [vars (with-type [:erel lexpr relop rexpr] [:bool])])
-      (err (str "expr invalid; expected " (get-type lexpr) ", found " (get-type rexpr)
-             " in: " location))
+      (err (str "expr invalid; expected " (print-type (get-type lexpr)) ", found "
+             (print-type (get-type rexpr)) " in: " location))
       )
 
     :else
@@ -644,7 +644,7 @@
               [[vars1 lexpr] (annotate-expr glob-state vars (second expr))
                [vars2 rexpr] (annotate-expr glob-state vars1 (fourth expr))
                op (m-result (third expr))
-               res (annotate-erel vars2 lexpr rexpr op location)
+               res (annotate-erel glob-state vars2 lexpr rexpr op location)
                ]
               res)
       :emul (domonad phase-m
