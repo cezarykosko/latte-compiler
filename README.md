@@ -1,8 +1,14 @@
+# latte-compiler
+
+A Clojure compiler of an extended version of [Latte programming language](http://www.mimuw.edu.pl/~ben/Zajecia/Mrj2015/Latte/)
+
+[![Circle CI](https://circleci.com/gh/cezarykosko/latte-compiler/tree/master.svg?style=svg&circle-token=cbc1438cf282e14f6f205871ac71223e36bc00f5)](https://circleci.com/gh/cezarykosko/latte-compiler/tree/master)
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [latte-compiler](#latte-compiler)
+  - [Extensions](#extensions)
   - [Usage](#usage)
   - [3rd party libraries](#3rd-party-libraries)
   - [catalogue structure](#catalogue-structure)
@@ -10,15 +16,25 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# latte-compiler
+## Extensions
 
-A Clojure compiler of [Latte programming language](http://www.mimuw.edu.pl/~ben/Zajecia/Mrj2015/Latte/)
-
-[![Circle CI](https://circleci.com/gh/cezarykosko/latte-compiler/tree/master.svg?style=svg&circle-token=cbc1438cf282e14f6f205871ac71223e36bc00f5)](https://circleci.com/gh/cezarykosko/latte-compiler/tree/master)
+Following extensions have been implemented:
+- arrays with a basic for statement ( `for ( int a : array)` )
+ - arrays are initialized with `0/false` for `int`s and `boolean`s, for all others they're filled up with `null`s
+- classes with single extensions (with virtual methods)
+ - every class method is considered virtual
+ - global functions are prioritized over instance methods
+ - `self` refers to instance inside instance method (and _IS_ assignable, effective in-scope only)
+ - overrides' of methods arguments need to be not-lower in class hierarchy than originals (except for the class object itself),
+reverse for return types;
+i.e. if `class A extends B` and `class C` has a method `B doSomething(A thing)`, then
+`class D extends C` may overwrite it with a method `A doSomething(B thing)`
 
 ## Usage
 
 After calling `make` the `latc_x86`, `latc` and `latc_drip` binaries are ready to use. Calling `latc_x86 foo/bar/baz.lat` (or `latc foo/bar/baz.lat`, or `latc_drip foo/bar/baz.lat`) will, should code compile, create files `baz.s` (x86 assembly code) and `baz` (the executable) in the `foo/bar` directory.
+
+Works with UNIX line endings only.
 
 ## 3rd party libraries
 

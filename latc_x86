@@ -5,7 +5,7 @@ FILENAME_W_EXTENSION=${FILEPATH##*/}
 FILENAME=${FILENAME_W_EXTENSION%.*}
 FILEDIR=${FILEPATH%$FILENAME_W_EXTENSION}
 
-JARPATH=$(dirname $BASH_SOURCE)/target/latte-compiler-0.9-standalone.jar
+JARPATH=$(dirname $BASH_SOURCE)/target/latte-compiler-1.0-standalone.jar
 DRIPPATH=$(dirname $BASH_SOURCE)/lib/drip
 DRIP_SHUTDOWN=30
 LIBPATH=$(dirname $BASH_SOURCE)/target/utils.o
