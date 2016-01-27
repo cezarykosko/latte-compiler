@@ -1,6 +1,6 @@
 (ns latte-compiler.state)
 
-(defrecord ClassDef [fields funs size])
+(defrecord ClassDef [fields funs size parents])
 (defrecord FunDef [name outType inTypes])
 (defrecord FieldDef [name type])
 (defrecord GlobState [classes funs std-types])
@@ -8,7 +8,7 @@
 (def default-state
   (->GlobState
     (hash-map
-      [:ident "_arr"] (->ClassDef '({[:ident "length"] [[:int] 0]}) '() 0)
+      [:ident "_arr"] (->ClassDef '({[:ident "length"] [[:int] 0]}) '() 0 '([:ident "_arr"]))
       )
     (hash-map
       [:ident "printInt"] (->FunDef [:ident "printInt"] [:void] [[:int]])

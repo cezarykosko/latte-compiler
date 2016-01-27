@@ -2,7 +2,7 @@
 <topdef> = def <ws>
 <def> = fndef | clssdef
 fndef = vtype <wp> ident <ws ob ws> args <ws cb ws> block
-<clssdef> = noextclssdef (*| extclssdef*)
+<clssdef> = noextclssdef | extclssdef
 noextclssdef = <'class' wp> ident <ws '{' ws> clssdecls <ws '}'>
 extclssdef = <'class' wp> ident <wp 'extends' wp> tident <ws '{' ws> clssdecls <'}'>
 <clssdecls> = (clssdecl <ws> )*
