@@ -40,11 +40,6 @@
 (defn err [msg] [:err msg])
 (defn succ [data] [:succ data])
 
-(m/domonad phase-m
-           [a (m-result 13)
-            b [:err 44]]
-            b)
-
 (defn toposort-hlp-red
   [elem-to-dep deps]
   (fn
