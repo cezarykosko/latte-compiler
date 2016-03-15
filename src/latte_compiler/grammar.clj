@@ -23,15 +23,12 @@
   #(->> (latte_parser %)
     (insta/add-line-and-column-info-to-metadata %)
     (insta/transform
-      {
-       :ident   stringify
-       :elitint intify
-       })))
+      {:ident   stringify
+       :elitint intify})))
 
 (defn parse
   [code]
   (let [parse (latte code)]
     (if (insta/failure? parse)
       (util/err (insta/get-failure parse))
-      (util/succ parse)
-      )))
+      (util/succ parse))))

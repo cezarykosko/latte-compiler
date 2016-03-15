@@ -14,16 +14,14 @@
   [filepath]
   (try
     (util/succ (slurp filepath))
-    (catch FileNotFoundException _ (util/err (str "file " filepath " not found")))
-    ))
+    (catch FileNotFoundException _ (util/err (str "file " filepath " not found")))))
 
 (defn- run
   [filepath]
   (m/domonad util/phase-m
     [code (read-file filepath)
      tree (grammar/parse code)
-     aug-tree (analysis/analize tree)
-     ]
+     aug-tree (analysis/analize tree)]
     aug-tree))
 
 (defn -main
@@ -31,11 +29,8 @@
   (match/match (run filepath)
     [:succ [glob-state tree]] (do
                    (util/println-err "OK")
-                   (compilation/asm-compile glob-state tree)
-                   )
+                   (compilation/asm-compile glob-state tree))
     [:err msg] (do
                  (util/println-err "ERROR")
                  (util/println-err msg)
-                 (System/exit 1)
-                 ))
-  )
+                 (System/exit 1))))

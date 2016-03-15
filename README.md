@@ -1,6 +1,7 @@
 # latte-compiler
 
-A Clojure compiler of an extended version of [Latte programming language](http://www.mimuw.edu.pl/~ben/Zajecia/Mrj2015/Latte/)
+A Clojure x86 compiler of an extended version of [Latte programming language](http://www.mimuw.edu.pl/~ben/Zajecia/Mrj2015/Latte/)
+_NOTE_: though published (and 1.0'd), the project is far from done. As my first serious-ish Clojure project, the style is, well bad. I am, however, working on improving it. 
 
 [![Circle CI](https://circleci.com/gh/cezarykosko/latte-compiler/tree/master.svg?style=svg&circle-token=cbc1438cf282e14f6f205871ac71223e36bc00f5)](https://circleci.com/gh/cezarykosko/latte-compiler/tree/master)
 
@@ -15,6 +16,17 @@ A Clojure compiler of an extended version of [Latte programming language](http:/
   - [Slow startup issue](#slow-startup-issue)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## TODOs:
+
+- multimethods in place of pattern matching, where possible (pretty much everywhere, maybe not for short fns)
+- ordering of helper functions by purpose would be nice
+- intermediate representation of compiled code
+- peephole optimization using the former
+- registries mgmt
+- inlining computations (with overflows, proper modulo etc)
+- inlein for shorter startup (after evaluation)
+- TBDs
 
 ## Extensions
 
