@@ -14,6 +14,17 @@
     :else (str var)
     ))
 
+(defn- print-type
+  [type]
+  (match type
+    [:void] "void"
+    [:int] "int"
+    [:string] "string"
+    [:bool] "bool"
+    [:atype ident] (str (print-type ident) "[]")
+    [:tident [:ident a]] a
+    [:ident a] a))
+
 (defn map-fun
   [fun]
   (match fun
@@ -186,7 +197,10 @@
         (err (str "class " (print-var clss) " not found in: " location))
         (lookup-field clss (.-fields (second class)) fident location)
         )
-      ))
+      )
+    type
+    (err (str "expected class type, found " (print-type type) " in: " location))
+    )
   )
 
 (defn- new-scope
@@ -413,17 +427,6 @@
     [:succ [[:args] vmap]] (rest args))
   )
 
-(defn- print-type
-  [type]
-  (match type
-    [:void] "void"
-    [:int] "int"
-    [:string] "string"
-    [:bool] "bool"
-    [:atype ident] (str (print-type ident) "[]")
-    [:tident [:ident a]] a
-    [:ident a] a))
-
 (defn- print-args
   [args]
   (if (empty? args)
@@ -578,7 +581,7 @@
       :etypednull (domonad phase-m
                     [type (m-result (second expr))
                      tmp (if (contains? ["void" "int" "boolean" "string"] (second type))
-                           (err (str "expected class type, found " (print-var type) " in: " location))
+                           (err (str "expected class type, found " (print-type type) " in: " location))
                            (succ "ok")
                            )
                      tmp2 (if (contains? (.-classes glob-state) type)
