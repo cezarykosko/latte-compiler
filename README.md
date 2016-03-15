@@ -9,11 +9,12 @@ _NOTE_: though published (and 1.0'd), the project is far from done. As my first 
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-  - [Extensions](#extensions)
-  - [Usage](#usage)
-  - [3rd party libraries](#3rd-party-libraries)
-  - [catalogue structure](#catalogue-structure)
-  - [Slow startup issue](#slow-startup-issue)
+- [TODOs:](#todos)
+- [Extensions](#extensions)
+- [Usage](#usage)
+- [3rd party libraries](#3rd-party-libraries)
+- [catalogue structure](#catalogue-structure)
+- [Slow startup issue](#slow-startup-issue)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
