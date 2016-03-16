@@ -1,7 +1,7 @@
 # latte-compiler
 
 A Clojure x86 compiler of an extended version of [Latte programming language](http://www.mimuw.edu.pl/~ben/Zajecia/Mrj2015/Latte/)
-_NOTE_: though published (and 1.0'd), the project is far from done. As my first serious-ish Clojure project, the style is, well bad. I am, however, working on improving it. 
+_NOTE_: though published (and 1.0'd), the project is far from done. As my first serious-ish Clojure project, the style is, well, bad. I am, however, working on improving it. 
 
 [![Circle CI](https://circleci.com/gh/cezarykosko/latte-compiler/tree/master.svg?style=svg&circle-token=cbc1438cf282e14f6f205871ac71223e36bc00f5)](https://circleci.com/gh/cezarykosko/latte-compiler/tree/master)
 
