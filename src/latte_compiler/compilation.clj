@@ -148,12 +148,14 @@
     (println (str "\t" ".text"))
     (println)))
 
+(declare expr_)
+
 (defn- get-varnum
-  [glob-state name var label-count expr_]
+  [glob-state name var label-count]
   (match var
     [:ident num]
     [label-count (offset-addr num ebp)]
-    [:vident [:ident num]] (recur glob-state name [:ident num] label-count expr_)
+    [:vident [:ident num]] (recur glob-state name [:ident num] label-count)
 
     [:fident eident expr] (let
                             [nlc (expr_ glob-state name eident label-count)
@@ -165,193 +167,239 @@
                             [nlc1 (offset-addr 0 eax)])))
 
 (defn- evar_
-  [glob-state name expr label-count expr_]
+  [glob-state name expr label-count]
   (let
-    [[nlc addr] (get-varnum glob-state name expr label-count expr_)]
+    [[nlc addr] (get-varnum glob-state name expr label-count)]
     (push_ addr)
     nlc))
 
-(defn- expr_
+(defmulti expr_
+  (fn [_ _ expr _]
+    (first expr)))
+
+(defmethod expr_ :elittrue
+  [_ _ _ label-count]
+  (push_ (const 1))
+  label-count)
+
+(defmethod expr_ :elitfalse
+  [_ _ _ label-count]
+  (push_ (const 0))
+  label-count)
+
+(defmethod expr_ :elitint
+  [_ _ expr label-count]
+  (push_ (const (second expr)))
+  label-count)
+
+(defmethod expr_ :etypednull
+  [_ _ _ label-count]
+  (push_ (const 0))
+  label-count)
+
+(defmethod expr_ :estring
+  [_ name expr label-count]
+  (push_ (const (string-addr name (second expr))))
+  label-count)
+
+(defmethod expr_ :evar
   [glob-state name expr label-count]
-  (match (first expr)
-    :elittrue (do
-                (push_ (const 1))
-                label-count)
-    :elitfalse (do
-                 (push_ (const 0))
-                 label-count)
-    :elitint (do
-               (push_ (const (second expr)))
-               label-count)
-    :etypednull (do
-                  (push_ (const 0))
-                  label-count)
-    :estring (do
-               (push_ (const (string-addr name (second expr))))
-               label-count)
-    :evar (evar_ glob-state name (second expr) label-count expr_)
-    :neg (let
-           [nlc (expr_ glob-state name (second expr) label-count)]
-           (pop_ edx)
-           (move_ (const 0) eax)
-           (sub_ edx eax)
-           (push_ eax)
-           nlc)
-    :not (let
-           [nlc (expr_ glob-state name (second expr) label-count)]
-           (pop_ eax)
-           (xor_ (const 1) eax)
-           (push_ eax)
-           nlc)
-    :eor (let
-           [ltrue (label-name name label-count)
-            lend (label-name name (+ label-count 1))
-            nlc (+ label-count 2)
-            nlc1 (expr_ glob-state name (second expr) nlc)]
-           (pop_ eax)
-           (test_ eax eax)
-           (jne_ ltrue)
-           (let
-             [nlc2 (expr_ glob-state name (third expr) nlc1)]
-             (pop_ eax)
-             (test_ eax eax)
-             (jne_ ltrue)
-             (push_ (const 0))
-             (jmp_ lend)
-             (label_ ltrue)
-             (push_ (const 1))
-             (label_ lend)
-             nlc2))
-    :eand (let
-            [lfalse (label-name name label-count)
-             lend (label-name name (+ label-count 1))
-             nlc (+ label-count 2)
-             nlc1 (expr_ glob-state name (second expr) nlc)]
-            (pop_ eax)
-            (test_ eax eax)
-            (je_ lfalse)
-            (let
-              [nlc2 (expr_ glob-state name (third expr) nlc1)]
-              (pop_ eax)
-              (test_ eax eax)
-              (je_ lfalse)
-              (push_ (const 1))
-              (jmp_ lend)
-              (label_ lfalse)
-              (push_ (const 0))
-              (label_ lend)
-              nlc2))
-    :erel (let
-            [nlc1 (expr_ glob-state name (second expr) label-count)
-             nlc2 (expr_ glob-state name (fourth expr) nlc1)
-             l1 (label-name name nlc2)
-             l2 (label-name name (+ nlc2 1))
-             op (match (third expr)
-                  [:lth] jg_
-                  [:le] jge_
-                  [:gth] jl_
-                  [:ge] jle_
-                  [:eq] je_
-                  [:ieq] jne_)]
-            (pop_ edx)
-            (pop_ eax)
-            (cmp_ eax edx)
-            (op l1)
-            (push_ (const 0))
-            (jmp_ l2)
-            (label_ l1)
-            (push_ (const 1))
-            (label_ l2)
-            (+ nlc2 2))
-    :emul (if (= (third expr) [:times])
-            (let
-              [nlc1 (expr_ glob-state name (second expr) label-count)
-               nlc2 (expr_ glob-state name (fourth expr) nlc1)]
-              (pop_ edx)
-              (pop_ eax)
-              (imul_ edx eax)
-              (push_ eax)
-              nlc2)
-            (let
-              [nlc1 (expr_ glob-state name (second expr) label-count)
-               nlc2 (expr_ glob-state name (fourth expr) nlc1)]
-              (pop_ ecx)
-              (pop_ eax)
-              (cdq_)
-              (idiv_ ecx)
-              (if (= (third expr) [:div])
-                (push_ eax)
-                (push_ edx))
-              nlc2))
-    :eadd (let
-            [lexpr (second expr)
-             rexpr (fourth expr)
-             op (if (= (third expr) [:plus])
-                  add_
-                  sub_)
-             nlc1 (expr_ glob-state name lexpr label-count)
-             nlc2 (expr_ glob-state name rexpr nlc1)]
-            (pop_ edx)
-            (pop_ eax)
-            (op edx eax)
-            (push_ eax)
-            nlc2)
-    :eclsapp (let
-               [offset (second expr)
-                args (reverse (third expr))
-                nargs (count args)
-                nlc (reduce #(expr_ glob-state name %2 %1)
-                      label-count args)]
-               (pop_ eax)
-               (push_ eax)
-               (move_ (offset-addr offset eax) eax)
-               (call_ (ptr eax))
-               (add_ (const (* 4 nargs)) esp)
-               (push_ eax)
-               nlc)
-    :eapp (let
-            [ident (second (second expr))
-             args (reverse (third expr))
-             nargs (count args)
-             nlc (reduce #(expr_ glob-state name %2 %1)
-                   label-count args)]
-            (call_ ident)
-            (add_ (const (* 4 nargs)) esp)
-            (push_ eax)
-            nlc)
-    :earrlit (let
-               [nlc1 (expr_ glob-state name (third expr) label-count)]
-               (pop_ eax)
-               (push_ eax)
-               (imul_ (const 4) eax)
-               (add_ (const 4) eax)
-               (push_ eax)
-               (call_ "malloc")
-               (push_ eax)
-               (call_ "_memSet")
-               (pop_ eax)
-               (pop_ ecx)
-               (pop_ ecx)
-               (push_ eax)
-               (move_ ecx (offset-addr 0 eax))
-               nlc1)
-    :eclassinit (let
-                  [type (second expr)
-                   clssdecl (second (find (.-classes glob-state) type))
-                   size (.-size clssdecl)
-                   funs (.-funs clssdecl)]
-                  (push_ (const (* 4 size)))
-                  (call_ "malloc")
-                  (push_ eax)
-                  (call_ "_memSet")
-                  (pop_ eax)
-                  (pop_ ecx)
-                  (doseq [def (vals funs)]
-                    (let
-                      [[fndef offset] def]
-                      (move_ (const (.-name fndef)) (offset-addr offset eax))))
-                  (push_ eax)
-                  label-count)))
+  (evar_ glob-state name (second expr) label-count))
+
+(defmethod expr_ :neg
+  [glob-state name expr label-count]
+  (let
+    [nlc (expr_ glob-state name (second expr) label-count)]
+    (pop_ edx)
+    (move_ (const 0) eax)
+    (sub_ edx eax)
+    (push_ eax)
+    nlc))
+
+(defmethod expr_ :not
+  [glob-state name expr label-count]
+  (let
+    [nlc (expr_ glob-state name (second expr) label-count)]
+    (pop_ eax)
+    (xor_ (const 1) eax)
+    (push_ eax)
+    nlc))
+
+(defmethod expr_ :eor
+  [glob-state name expr label-count]
+  (let
+    [ltrue (label-name name label-count)
+     lend (label-name name (+ label-count 1))
+     nlc (+ label-count 2)
+     nlc1 (expr_ glob-state name (second expr) nlc)]
+    (pop_ eax)
+    (test_ eax eax)
+    (jne_ ltrue)
+    (let
+      [nlc2 (expr_ glob-state name (third expr) nlc1)]
+      (pop_ eax)
+      (test_ eax eax)
+      (jne_ ltrue)
+      (push_ (const 0))
+      (jmp_ lend)
+      (label_ ltrue)
+      (push_ (const 1))
+      (label_ lend)
+      nlc2)))
+
+(defmethod expr_ :eand
+  [glob-state name expr label-count]
+  (let
+    [lfalse (label-name name label-count)
+     lend (label-name name (+ label-count 1))
+     nlc (+ label-count 2)
+     nlc1 (expr_ glob-state name (second expr) nlc)]
+    (pop_ eax)
+    (test_ eax eax)
+    (je_ lfalse)
+    (let
+      [nlc2 (expr_ glob-state name (third expr) nlc1)]
+      (pop_ eax)
+      (test_ eax eax)
+      (je_ lfalse)
+      (push_ (const 1))
+      (jmp_ lend)
+      (label_ lfalse)
+      (push_ (const 0))
+      (label_ lend)
+      nlc2)))
+
+(defmethod expr_ :erel
+  [glob-state name expr label-count]
+  (let
+    [nlc1 (expr_ glob-state name (second expr) label-count)
+     nlc2 (expr_ glob-state name (fourth expr) nlc1)
+     l1 (label-name name nlc2)
+     l2 (label-name name (+ nlc2 1))
+     op (match (third expr)
+          [:lth] jg_
+          [:le] jge_
+          [:gth] jl_
+          [:ge] jle_
+          [:eq] je_
+          [:ieq] jne_)]
+    (pop_ edx)
+    (pop_ eax)
+    (cmp_ eax edx)
+    (op l1)
+    (push_ (const 0))
+    (jmp_ l2)
+    (label_ l1)
+    (push_ (const 1))
+    (label_ l2)
+    (+ nlc2 2)))
+
+(defmethod expr_ :emul
+  [glob-state name expr label-count]
+  (if (= (third expr) [:times])
+    (let
+      [nlc1 (expr_ glob-state name (second expr) label-count)
+       nlc2 (expr_ glob-state name (fourth expr) nlc1)]
+      (pop_ edx)
+      (pop_ eax)
+      (imul_ edx eax)
+      (push_ eax)
+      nlc2)
+    (let
+      [nlc1 (expr_ glob-state name (second expr) label-count)
+       nlc2 (expr_ glob-state name (fourth expr) nlc1)]
+      (pop_ ecx)
+      (pop_ eax)
+      (cdq_)
+      (idiv_ ecx)
+      (if (= (third expr) [:div])
+        (push_ eax)
+        (push_ edx))
+      nlc2)))
+
+(defmethod expr_ :eadd
+  [glob-state name expr label-count]
+  (let
+    [lexpr (second expr)
+     rexpr (fourth expr)
+     op (if (= (third expr) [:plus])
+          add_
+          sub_)
+     nlc1 (expr_ glob-state name lexpr label-count)
+     nlc2 (expr_ glob-state name rexpr nlc1)]
+    (pop_ edx)
+    (pop_ eax)
+    (op edx eax)
+    (push_ eax)
+    nlc2))
+
+(defmethod expr_ :eclsapp
+  [glob-state name expr label-count]
+  (let
+    [offset (second expr)
+     args (reverse (third expr))
+     nargs (count args)
+     nlc (reduce #(expr_ glob-state name %2 %1)
+           label-count args)]
+    (pop_ eax)
+    (push_ eax)
+    (move_ (offset-addr offset eax) eax)
+    (call_ (ptr eax))
+    (add_ (const (* 4 nargs)) esp)
+    (push_ eax)
+    nlc))
+
+(defmethod expr_ :eapp
+  [glob-state name expr label-count]
+  (let
+    [ident (second (second expr))
+     args (reverse (third expr))
+     nargs (count args)
+     nlc (reduce #(expr_ glob-state name %2 %1)
+           label-count args)]
+    (call_ ident)
+    (add_ (const (* 4 nargs)) esp)
+    (push_ eax)
+    nlc))
+
+(defmethod expr_ :earrlit
+  [glob-state name expr label-count]
+  (let
+    [nlc1 (expr_ glob-state name (third expr) label-count)]
+    (pop_ eax)
+    (push_ eax)
+    (imul_ (const 4) eax)
+    (add_ (const 4) eax)
+    (push_ eax)
+    (call_ "malloc")
+    (push_ eax)
+    (call_ "_memSet")
+    (pop_ eax)
+    (pop_ ecx)
+    (pop_ ecx)
+    (push_ eax)
+    (move_ ecx (offset-addr 0 eax))
+    nlc1))
+
+(defmethod expr_ :eclassinit
+  [glob-state _ expr label-count]
+  (let
+    [type (second expr)
+     clssdecl (second (find (.-classes glob-state) type))
+     size (.-size clssdecl)
+     funs (.-funs clssdecl)]
+    (push_ (const (* 4 size)))
+    (call_ "malloc")
+    (push_ eax)
+    (call_ "_memSet")
+    (pop_ eax)
+    (pop_ ecx)
+    (doseq [def (vals funs)]
+      (let
+        [[fndef offset] def]
+        (move_ (const (.-name fndef)) (offset-addr offset eax))))
+    (push_ eax)
+    label-count))
 
 (defn- return_ []
   (leave_)
@@ -371,73 +419,96 @@
               (move_ (default-for-type type) (offset-addr num ebp))
               %1)) label-count decls))
 
-(defn- stmt_
+(defmulti stmt_
+  (fn
+    [_ _ stmt _ ]
+    (first stmt)))
+
+(defmethod stmt_ :vret
+  [_ _ _ label-count]
+  (return_)
+  label-count)
+
+(defmethod stmt_ :ret
+  [glob-state name stmt label-count]
+  (let
+    [nlc (expr_ glob-state name (second stmt) label-count)]
+    (pop_ eax)
+    (return_)
+    nlc))
+
+(defmethod stmt_ :block
+  [glob-state name stmt label-count]
+  (reduce #(stmt_ glob-state name %2 %1) label-count (rest stmt)))
+
+(defmethod stmt_ :decl
   [glob-state name stmt label-count]
   (let [type (get-type stmt)]
-    (match (first stmt)
-      :vret (do
-              (return_)
-              label-count)
-      :ret (let
-             [nlc (expr_ glob-state name (second stmt) label-count)]
-             (pop_ eax)
-             (return_)
-             nlc)
-      :block (reduce #(stmt_ glob-state name %2 %1) label-count (rest stmt))
-      :incr (let [[nlc addr] (get-varnum glob-state name (second stmt) label-count expr_)]
-              (add_ (const 1) addr)
-              nlc)
-      :decr (let [[nlc addr] (get-varnum glob-state name (second stmt) label-count expr_)]
-              (sub_ (const 1) addr)
-              nlc)
-      :decl (do
-              (decls_ glob-state name type (rest (rest stmt)) label-count))
-      :ass (let [expr (third stmt)
-                 nlc1 (expr_ glob-state name expr label-count)
-                 [nlc addr] (get-varnum glob-state name (second stmt) nlc1 expr_)]
-             (pop_ edx)
-             (move_ edx addr)
-             nlc)
-      :cond (let
-              [nlc1 (expr_ glob-state name (second stmt) label-count)
-               l1 (label-name name nlc1)]
-              (pop_ eax)
-              (test_ eax eax)
-              (je_ l1)
-              (let [nlc2 (stmt_ glob-state name (third stmt) (+ nlc1 1))]
-                (label_ l1)
-                nlc2))
-      :condelse (let
-                  [nlc1 (expr_ glob-state name (second stmt) label-count)
-                   l1 (label-name name nlc1)
-                   l2 (label-name name (+ nlc1 1))]
-                  (pop_ eax)
-                  (test_ eax eax)
-                  (je_ l1)
-                  (let [nlc2 (stmt_ glob-state name (third stmt) (+ nlc1 2))]
-                    (jmp_ l2)
-                    (label_ l1)
-                    (let [nlc3 (stmt_ glob-state name (fourth stmt) nlc2)]
-                      (label_ l2)
-                      nlc3)))
-      :while (let
-               [l1 (label-name name label-count)
-                l2 (label-name name (+ label-count 1))]
-               (jmp_ l2)
-               (label_ l1)
-               (let
-                 [nlc1 (stmt_ glob-state name (third stmt) (+ label-count 2))
-                  _ (label_ l2)
-                  nlc2 (expr_ glob-state name (second stmt) nlc1)]
-                 (pop_ eax)
-                 (test_ eax eax)
-                 (jne_ l1)
-                 nlc2))
-      :sexp (let
-              [nlc (expr_ glob-state name (second stmt) label-count)]
-              (pop_ eax)
-              nlc)
-      :empty label-count)))
+    (decls_ glob-state name type (rest (rest stmt)) label-count)))
+
+(defmethod stmt_ :ass
+  [glob-state name stmt label-count]
+  (let [expr (third stmt)
+        nlc1 (expr_ glob-state name expr label-count)
+        [nlc addr] (get-varnum glob-state name (second stmt) nlc1)]
+    (pop_ edx)
+    (move_ edx addr)
+    nlc))
+
+(defmethod stmt_ :cond
+  [glob-state name stmt label-count]
+  (let
+    [nlc1 (expr_ glob-state name (second stmt) label-count)
+     l1 (label-name name nlc1)]
+    (pop_ eax)
+    (test_ eax eax)
+    (je_ l1)
+    (let [nlc2 (stmt_ glob-state name (third stmt) (+ nlc1 1))]
+      (label_ l1)
+      nlc2)))
+
+(defmethod stmt_ :condelse
+  [glob-state name stmt label-count]
+  (let
+    [nlc1 (expr_ glob-state name (second stmt) label-count)
+     l1 (label-name name nlc1)
+     l2 (label-name name (+ nlc1 1))]
+    (pop_ eax)
+    (test_ eax eax)
+    (je_ l1)
+    (let [nlc2 (stmt_ glob-state name (third stmt) (+ nlc1 2))]
+      (jmp_ l2)
+      (label_ l1)
+      (let [nlc3 (stmt_ glob-state name (fourth stmt) nlc2)]
+        (label_ l2)
+        nlc3))))
+
+(defmethod stmt_ :while
+  [glob-state name stmt label-count]
+  (let
+    [l1 (label-name name label-count)
+     l2 (label-name name (+ label-count 1))]
+    (jmp_ l2)
+    (label_ l1)
+    (let
+      [nlc1 (stmt_ glob-state name (third stmt) (+ label-count 2))
+       _ (label_ l2)
+       nlc2 (expr_ glob-state name (second stmt) nlc1)]
+      (pop_ eax)
+      (test_ eax eax)
+      (jne_ l1)
+      nlc2)))
+
+(defmethod stmt_ :sexp
+  [glob-state name stmt label-count]
+  (let
+    [nlc (expr_ glob-state name (second stmt) label-count)]
+    (pop_ eax)
+    nlc))
+
+(defmethod stmt_ :empty
+  [_ _ _ label-count]
+  label-count)
 
 (defn- function_
   [glob-state fun]

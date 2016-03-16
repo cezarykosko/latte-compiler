@@ -20,7 +20,6 @@ _NOTE_: though published (and 1.0'd), the project is far from done. As my first 
 
 ## TODOs:
 
-- multimethods in place of pattern matching, where possible (pretty much everywhere, maybe not for short fns)
 - ordering of helper functions by purpose would be nice
 - intermediate representation of compiled code
 - peephole optimization using the former
