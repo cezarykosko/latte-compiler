@@ -1,5 +1,5 @@
 (ns latte-compiler.compilation
-  (:require [latte-compiler.util :refer [third fourth]]
+  (:require [latte-compiler.util :refer [third fourth get-type]]
             [clojure.core.match :refer [match]]))
 
 (defn- ptr
@@ -12,10 +12,6 @@
 
 (def empty-string "emptystring")
 
-(defn- get-type
-  [obj]
-  (second (find (meta obj) "_type")))
-
 (defn- default-for-type
   [type]
   (match type
@@ -25,98 +21,99 @@
     [:atype _] (const 0)
     [:ident _] (const 0)))
 
-(defn- label-name
+(defmacro label-name
   [name lcount]
-  (str "." name "label" lcount))
+  `(str "." ~name "label" ~lcount))
 
-(defn- label_
+(defmacro emit
+  ([command] `(println (str "\t" ~command)))
+  ([command arg1] `(println (str "\t" ~command " " ~arg1)))
+  ([command arg1 arg2] `(println (str "\t" ~command " " ~arg1 ", " ~arg2))))
+
+(defmacro label_
   [label]
-  (println (str label ":")))
+  `(println (str ~label ":")))
 
-(defn- pop_
+(defmacro pop_
   [dest]
-  (println (str "\t" "popl" " " dest)))
+  `(emit "popl" ~dest))
 
-(defn- push_
+(defmacro push_
   [src]
-  (println (str "\t" "pushl" " " src)))
+  `(emit "pushl" ~src))
 
-(defn- move_
+(defmacro move_
   [src dest]
-  (println (str "\t" "movl" " " src ", " dest)))
+  `(emit "movl" ~src ~dest))
 
-(defn- call_
+(defmacro call_
   [fun]
-  (println (str "\t" "call" " " fun)))
+  `(emit "call" ~fun))
 
-(defn- add_
+(defmacro add_
   [arg1 arg2]
-  (println (str "\t" "addl" " " arg1 ", " arg2)))
+  `(emit "addl" ~arg1 ~arg2))
 
-(defn- sub_
+(defmacro sub_
   [arg1 arg2]
-  (println (str "\t" "subl" " " arg1 ", " arg2)))
+  `(emit "subl" ~arg1 ~arg2))
 
-(defn- imul_
+(defmacro imul_
   [arg1 arg2]
-  (println (str "\t" "imull" " " arg1 ", " arg2)))
+  `(emit "imull" ~arg1 ~arg2))
 
-(defn- idiv_
+(defmacro idiv_
   [arg]
-  (println (str "\t" "idivl" " " arg)))
+  `(emit "idivl" ~arg))
 
-(defn- cdq_ []
-  (println (str "\t" "cdq")))
+(defmacro cdq_ []
+  `(emit "cdq"))
 
-(defn- xor_
+(defmacro xor_
   [arg1 arg2]
-  (println (str "\t" "xorl" " " arg1 ", " arg2)))
+  `(emit "xorl" ~arg1 ~arg2))
 
-(defn- test_
+(defmacro test_
   [arg1 arg2]
-  (println (str "\t" "test" " " arg1 ", " arg2)))
+  `(emit "test" ~arg1 ~arg2))
 
-(defn- cmp_
+(defmacro cmp_
   [arg1 arg2]
-  (println (str "\t" "cmp" " " arg1 ", " arg2)))
+  `(emit "cmp" ~arg1 ~arg2))
 
-(defn- jmp_
+(defmacro jmp_
   [label]
-  (println (str "\t" "jmp" " " label)))
+  `(emit "jmp" ~label))
 
-(defn- je_
+(defmacro je_
   [label]
-  (println (str "\t" "je" " " label)))
+  `(emit "je" ~label))
 
-(defn- jne_
+(defmacro jne_
   [label]
-  (println (str "\t" "jne" " " label)))
+  `(emit "jne" ~label))
 
-(defn- jg_
+(defmacro jg_
   [label]
-  (println (str "\t" "jg" " " label)))
+  `(emit "jg" ~label))
 
-(defn- jge_
+(defmacro jge_
   [label]
-  (println (str "\t" "jge" " " label)))
+  `(emit "jge" ~label))
 
-(defn- jl_
+(defmacro jl_
   [label]
-  (println (str "\t" "jl" " " label)))
+  `(emit "jl" ~label))
 
-(defn- jle_
+(defmacro jle_
   [label]
-  (println (str "\t" "jle" " " label)))
+  `(emit "jle" ~label))
 
-(defn- lea_
-  [src dest]
-  (println (str "\t" "leal" " " src ", " dest)))
+(defmacro leave_ []
+  `(emit "leave"))
 
-(defn- leave_ []
-  (println (str "\t" "leave")))
-
-(defn- ret_ []
-  (println (str "\t" "ret")))
+(defmacro ret_ []
+  `(emit "ret"))
 
 (defn- string-addr
   [name n]
@@ -124,7 +121,7 @@
 
 (defn- offset-addr
   [offset addr]
-  (if (= offset 0)
+  (if (zero? offset)
     (str "(" addr ")")
     (str (* 4 offset) "(" addr ")")))
 
@@ -277,12 +274,12 @@
      l1 (label-name name nlc2)
      l2 (label-name name (+ nlc2 1))
      op (match (third expr)
-          [:lth] jg_
-          [:le] jge_
-          [:gth] jl_
-          [:ge] jle_
-          [:eq] je_
-          [:ieq] jne_)]
+          [:lth] #(jg_ %)
+          [:le] #(jge_ %)
+          [:gth] #(jl_ %)
+          [:ge] #(jle_ %)
+          [:eq] #(je_ %)
+          [:ieq] #(jne_ %))]
     (pop_ edx)
     (pop_ eax)
     (cmp_ eax edx)
@@ -323,8 +320,8 @@
     [lexpr (second expr)
      rexpr (fourth expr)
      op (if (= (third expr) [:plus])
-          add_
-          sub_)
+          #(add_ %1 %2)
+          #(sub_ %1 %2))
      nlc1 (expr_ glob-state name lexpr label-count)
      nlc2 (expr_ glob-state name rexpr nlc1)]
     (pop_ edx)
