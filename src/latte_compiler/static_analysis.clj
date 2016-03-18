@@ -2,7 +2,8 @@
   (:require
     [clojure.core.match :refer [match]]
     [clojure.algo.monads :refer [domonad]]
-    [latte-compiler.util :refer [succ err ip-meta phase-m third fourth returns? toposort]]
+    [latte-compiler.util :refer [succ err ip-meta phase-m third fourth returns? toposort
+                                 with-type get-type print-type]]
     )
   (:use [latte-compiler.state]))
 
@@ -12,17 +13,6 @@
     [:vident [:ident name]] (str name)
     [:ident name] (str name)
     :else (str var)))
-
-(defn- print-type
-  [type]
-  (match type
-    [:void] "void"
-    [:int] "int"
-    [:string] "string"
-    [:bool] "bool"
-    [:atype ident] (str (print-type ident) "[]")
-    [:tident [:ident a]] a
-    [:ident a] a))
 
 (defn map-fun
   [fun]
@@ -99,8 +89,7 @@
 
 (defn- safe-lookup-var
   [[map a b c] var]
-  (if (empty? map)
-    nil
+  (when-not (empty? map)
     (let
       [type (find (peek map) var)]
       (if (nil? type)
@@ -137,8 +126,7 @@
   (let
     [funs (.-funs glob-state)
      rec (find funs ident)]
-    (if (nil? rec)
-      nil
+    (when-not (nil? rec)
       (second rec))))
 
 (defn- lookup-field
@@ -366,17 +354,9 @@
     (succ res)
     (fail-check-types exp-type actual-type location)))
 
-(defn- with-type
-  [obj type]
-  (with-meta obj (assoc (meta obj) "_type" type)))
-
 (defn- with-vars
   [obj vars]
   (with-meta obj (assoc (meta obj) "_vars" vars)))
-
-(defn- get-type
-  [obj]
-  (second (find (meta obj) "_type")))
 
 (defn- is-str
   [x]
@@ -389,13 +369,13 @@
 (defn- annotate-erel
   [glob-state vars lexpr rexpr relop location]
   (match [lexpr rexpr relop]
-    [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:eq]]
+    [(lexpr :guard is-str) (rexpr :guard is-str) [:eq]]
     (succ [vars (with-type [:eapp [:ident "_eqStrings"] [lexpr rexpr]] [:bool])])
 
-    [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:ieq]]
+    [(lexpr :guard is-str) (rexpr :guard is-str) [:ieq]]
     (succ [vars (with-type [:not [:eapp [:ident "_eqStrings"] [lexpr rexpr]]] [:bool])])
 
-    [(lexpr :guard #(is-int %)) (rexpr :guard #(is-int %)) relop]
+    [(lexpr :guard is-int) (rexpr :guard is-int) relop]
     (succ [vars (with-type [:erel lexpr relop rexpr] [:bool])])
 
     [lexpr rexpr (:or [:eq] [:ieq])]
@@ -412,10 +392,10 @@
 (defn- annotate-eadd
   [vars lexpr rexpr relop location]
   (match [lexpr rexpr relop]
-    [(lexpr :guard #(is-str %)) (rexpr :guard #(is-str %)) [:plus]]
+    [(lexpr :guard is-str) (rexpr :guard is-str) [:plus]]
     (succ [vars (with-type [:eapp [:ident "_concatStrings"] [lexpr rexpr]] [:string])])
 
-    [(lexpr :guard #(is-int %)) (rexpr :guard #(is-int %)) relop]
+    [(lexpr :guard is-int) (rexpr :guard is-int) relop]
     (succ [vars (with-type [:eadd lexpr relop rexpr] [:int])])
 
     [_ _ [:plus]]
@@ -493,7 +473,7 @@
                              (err (str "expr type invalid; expected int, found "
                                     (print-type (get-type ins-expr)) " in: " location)))
      _ (match ins-expr
-         [:elitint x] (if (< x 0)
+         [:elitint x] (if (neg? x)
                         (err (str "array size declared negative in: " location))
                         (succ "ok"))
          :else (succ "ok"))]
@@ -833,7 +813,7 @@
 (defn- analyze-fun
   [glob-state funexpr]
   (match funexpr [_ get-type [_ name] _ block]
-    (if (not (or (= get-type [:void]) (returns? block)))
+    (if-not (or (= get-type [:void]) (returns? block))
       (err (str "return not found in function " name "\n" (ip-meta funexpr)))
       (check-type glob-state funexpr))))
 

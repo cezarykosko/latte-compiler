@@ -1,14 +1,18 @@
 (ns latte-compiler.util
   (:require [clojure.algo.monads :as m]
-            [clojure.core.match :as match]))
+            [clojure.core.match :refer [match]]))
+
+; coll
 
 (defn third
   [coll]
-  (first (next (next coll))))
+  (fnext (next coll)))
 
 (defn fourth
   [coll]
-  (first (next (next (next coll)))))
+  (fnext (nnext coll)))
+
+; IO
 
 (defn println-err
   [msg]
@@ -20,6 +24,27 @@
   (let [m (meta obj)]
      (str "line " (:instaparse.gll/start-line m) ", column " (:instaparse.gll/start-column m))))
 
+; types
+
+(defn with-type
+  [obj type]
+  (with-meta obj (assoc (meta obj) "_type" type)))
+
+(defn get-type
+  [obj]
+  (second (find (meta obj) "_type")))
+
+(defn print-type
+  [type]
+  (match type
+    [:void] "void"
+    [:int] "int"
+    [:string] "string"
+    [:bool] "bool"
+    [:atype ident] (str (print-type ident) "[]")
+    [:tident [:ident a]] a
+    [:ident a] a))
+
 (m/defmonad phase-m
   "Monad describing a temporary result of compilation.
    Phase is successful iff the value stored is [:succ *]
@@ -29,7 +54,7 @@
               [:succ r])
    m-bind (fn m-bind-phase
             [pv f]
-            (match/match pv
+            (match pv
                [:succ val] (f val)
                [:err msg] pv))])
 
@@ -51,7 +76,7 @@
     [elms elems
      deps (hash-set)
      output []]
-    (if (= 0 (count elms))
+    (if (zero? (count elms))
       (succ output)
       (let [[to-add not-to-add] (reduce (toposort-hlp-red elem-to-dep deps) [[] []] elms)
             ids (map elem-to-id to-add)]
@@ -63,19 +88,19 @@
 
 (defn returns?
   [code]
-  (match/match (first code)
+  (match (first code)
     :block (some returns? (rest code))
     :vret true
     :ret true
-    :cond (match/match code
+    :cond (match code
             [_ [:elittrue] b] (recur b)
             :else false)
-    :condelse (match/match code
+    :condelse (match code
                 [_ [:elittrue] b1 _] (recur b1)
                 [_ [:elitfalse] _ b2] (recur b2)
                 [_ _ b1 b2] (and (returns? b1) (returns? b2))
                 :else false)
-    :while (match/match code
+    :while (match code
              [_ [:elittrue] _] true
              [_ [:elitfalse] _] false
              [_ _ b] (recur b))
